@@ -47,6 +47,25 @@ on conflict (email) do nothing;
 
 The public page only reads from Supabase. Writes are only allowed for signed-in admins whose email exists in Supabase Auth, `admin_users`, and `ADMIN_EMAILS`.
 
+## Weekly Leaderboard Flow
+
+The leaderboard is weekly. Starting a new week stores the current SolPump affiliate standings as the baseline, sets every public wager to `0`, stores the prize pot in SOL, and starts a 7-day timer.
+
+Admin flow:
+
+1. Open `/admin.html` and sign in.
+2. Drag `Start New Week` and `Refresh Week` into the Chrome bookmarks bar.
+3. Open `https://solpump.io/affiliates`.
+4. Click `Start New Week` once and enter the prize pot in SOL.
+5. Later, click `Refresh Week` to update the leaderboard.
+
+The public leaderboard shows the top 10 by weekly wager difference. Prize split:
+
+```text
+1st 35%, 2nd 20%, 3rd 15%, 4th 10%, 5th 7%,
+6th 5%, 7th 3%, 8th 2%, 9th 2%, 10th 1%
+```
+
 ## If Cloudflare Blocks the Server
 
 SolPump can protect the API with a browser challenge. In that case, the Node server cannot fetch the API directly, even with cookies.
@@ -56,7 +75,7 @@ Workaround:
 1. Start the leaderboard website.
 2. Open `http://localhost:3000/admin.html`.
 3. Sign in with the admin email and password.
-4. Drag the `Update Leaderboard` button into your bookmarks bar.
+4. Drag the `Start New Week` and `Refresh Week` buttons into your bookmarks bar.
 5. Open `https://solpump.io/affiliates`.
 6. Click the bookmark.
 

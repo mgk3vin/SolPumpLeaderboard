@@ -8,6 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, "public");
 const port = Number(process.env.PORT || 3000);
 let browserIngest = null;
+const prizeSplit = [35, 20, 15, 10, 7, 5, 3, 2, 2, 1];
 
 await loadEnv();
 const solPumpHeaderFile = path.join(__dirname, ".solpump-headers.json");
@@ -41,6 +42,11 @@ const server = http.createServer(async (request, response) => {
 
     if (url.pathname === "/api/ingest" && request.method === "POST") {
       await receiveBrowserIngest(request, response);
+      return;
+    }
+
+    if (url.pathname === "/api/start-week" && request.method === "POST") {
+      await receiveWeekStart(request, response);
       return;
     }
 
@@ -82,7 +88,9 @@ async function sendLeaderboard(response) {
         ok: true,
         source: "supabase",
         updatedAt: supabaseResult.updatedAt,
-        leaderboard: preparePublicLeaderboard(supabaseResult.leaderboard)
+        week: supabaseResult.week,
+        prizeSplit,
+        leaderboard: preparePublicLeaderboard(supabaseResult.leaderboard, supabaseResult.week)
       });
       return;
     }
@@ -98,7 +106,9 @@ async function sendLeaderboard(response) {
       ok: true,
       source: "browser",
       updatedAt: browserIngest.updatedAt,
-      leaderboard: preparePublicLeaderboard(browserIngest.leaderboard)
+      week: defaultWeek(),
+      prizeSplit,
+      leaderboard: preparePublicLeaderboard(browserIngest.leaderboard, defaultWeek())
     });
     return;
   }
@@ -108,7 +118,9 @@ async function sendLeaderboard(response) {
       ok: true,
       source: "demo",
       updatedAt: new Date().toISOString(),
-      leaderboard: preparePublicLeaderboard(demoLeaderboard)
+      week: defaultWeek(),
+      prizeSplit,
+      leaderboard: preparePublicLeaderboard(demoLeaderboard, defaultWeek())
     });
     return;
   }
@@ -132,18 +144,23 @@ async function sendLeaderboard(response) {
     ok: true,
     source: "solpump",
     updatedAt: new Date().toISOString(),
-    leaderboard: preparePublicLeaderboard(leaderboard)
+    week: defaultWeek(),
+    prizeSplit,
+    leaderboard: preparePublicLeaderboard(leaderboard, defaultWeek())
   });
 }
 
 async function receiveBrowserIngest(request, response) {
   const body = await readRequestBody(request);
-  const payload = JSON.parse(body);
+  const requestBody = JSON.parse(body);
+  const payload = requestBody.payload || requestBody;
   const leaderboard = normalizeSolPumpPayload(payload);
   const authHeader = request.headers.authorization || "";
 
   if (hasSupabaseConfig() && authHeader.startsWith("Bearer ")) {
-    const saved = await saveSupabaseLeaderboard(leaderboard, authHeader);
+    const saved = await saveSupabaseLeaderboard(leaderboard, authHeader, {
+      mode: "refresh"
+    });
 
     if (!saved.ok) {
       sendJson(response, saved.status || 500, {
@@ -172,14 +189,62 @@ async function receiveBrowserIngest(request, response) {
   });
 }
 
+async function receiveWeekStart(request, response) {
+  const body = await readRequestBody(request);
+  const requestBody = JSON.parse(body);
+  const leaderboard = normalizeSolPumpPayload(requestBody.payload || requestBody);
+  const pot = numberFrom(requestBody.pot);
+  const authHeader = request.headers.authorization || "";
+
+  if (!hasSupabaseConfig() || !authHeader.startsWith("Bearer ")) {
+    sendJson(response, 401, {
+      ok: false,
+      error: "Admin login required"
+    });
+    return;
+  }
+
+  if (!Number.isFinite(pot) || pot <= 0) {
+    sendJson(response, 400, {
+      ok: false,
+      error: "Prize pot must be greater than 0 SOL"
+    });
+    return;
+  }
+
+  const saved = await saveSupabaseLeaderboard(leaderboard, authHeader, {
+    mode: "start",
+    pot
+  });
+
+  if (!saved.ok) {
+    sendJson(response, saved.status || 500, {
+      ok: false,
+      error: saved.error || "Could not start the week"
+    });
+    return;
+  }
+
+  sendJson(response, 200, {
+    ok: true,
+    rows: leaderboard.length,
+    pot
+  });
+}
+
 function sendBookmarklet(response, requestUrl) {
   const solPumpPath = new URL(process.env.SOLPUMP_API_URL || "https://solpump.io/api/v1/affiliate?sort=Most+Wagered").pathname;
   const solPumpQuery = new URL(process.env.SOLPUMP_API_URL || "https://solpump.io/api/v1/affiliate?sort=Most+Wagered").search;
   const apiPath = `${solPumpPath}${solPumpQuery}`;
-  const ingestUrl = process.env.PUBLIC_BASE_URL ? `${process.env.PUBLIC_BASE_URL.replace(/\/$/, "")}/api/ingest` : `http://localhost:${port}/api/ingest`;
+  const action = requestUrl.searchParams.get("action") === "start" ? "start" : "refresh";
+  const targetPath = action === "start" ? "/api/start-week" : "/api/ingest";
+  const ingestUrl = process.env.PUBLIC_BASE_URL ? `${process.env.PUBLIC_BASE_URL.replace(/\/$/, "")}${targetPath}` : `http://localhost:${port}${targetPath}`;
   const token = requestUrl.searchParams.get("token") || "";
   const tokenExpression = token ? JSON.stringify(token) : `localStorage.getItem("lordpommes_admin_token")`;
-  const script = `(async()=>{const t=${tokenExpression};if(!t){alert("Please sign in to the admin panel first.");return;}const r=await fetch(${JSON.stringify(apiPath)},{credentials:"include"});const j=await r.json();const p=await fetch(${JSON.stringify(ingestUrl)},{method:"POST",headers:{"content-type":"application/json","authorization":"Bearer "+t},body:JSON.stringify(j)});const o=await p.json();if(!p.ok||!o.ok)throw new Error(o.error||"Import failed");alert("LordpommesX2 leaderboard updated: "+o.rows+" affiliates");})().catch(e=>alert("Leaderboard import failed: "+e.message));`;
+  const potScript = action === "start" ? `const pot=Number(prompt("Prize pot in SOL","10"));if(!Number.isFinite(pot)||pot<=0){alert("Please enter a valid SOL pot.");return;}` : `const pot=null;`;
+  const bodyExpression = action === "start" ? `{payload:j,pot}` : `{payload:j}`;
+  const successText = action === "start" ? `"New leaderboard week started: "+o.rows+" affiliates, "+o.pot+" SOL pot"` : `"Leaderboard refreshed: "+o.rows+" affiliates"`;
+  const script = `(async()=>{const t=${tokenExpression};if(!t){alert("Please sign in to the admin panel first.");return;}${potScript}const r=await fetch(${JSON.stringify(apiPath)},{credentials:"include"});const j=await r.json();const p=await fetch(${JSON.stringify(ingestUrl)},{method:"POST",headers:{"content-type":"application/json","authorization":"Bearer "+t},body:JSON.stringify(${bodyExpression})});const o=await p.json();if(!p.ok||!o.ok)throw new Error(o.error||"Import failed");alert(${successText});})().catch(e=>alert("Leaderboard import failed: "+e.message));`;
 
   sendJson(response, 200, {
     ok: true,
@@ -266,13 +331,30 @@ function addOptionalHeader(headers, name, value) {
   }
 }
 
-function preparePublicLeaderboard(leaderboard) {
+function preparePublicLeaderboard(leaderboard, week = defaultWeek()) {
   return leaderboard.slice(0, 10).map((entry, index) => ({
     rank: index + 1,
     name: censorName(entry.name),
     wagered: entry.wagered,
+    prize: calculatePrize(index + 1, week.pot),
     avatar: entry.avatar
   }));
+}
+
+function calculatePrize(rank, pot) {
+  const percentage = prizeSplit[rank - 1] || 0;
+  return Number(((numberFrom(pot) * percentage) / 100).toFixed(4));
+}
+
+function defaultWeek() {
+  const now = new Date();
+  const endsAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+  return {
+    pot: 0,
+    startedAt: now.toISOString(),
+    endsAt: endsAt.toISOString()
+  };
 }
 
 function censorName(name) {
@@ -314,6 +396,7 @@ async function readSupabaseLeaderboard() {
     }
 
     const rows = await response.json();
+    const week = await readSupabaseWeek();
     const leaderboard = rows.map((row) => ({
       rank: numberFrom(row.rank),
       name: row.name,
@@ -330,6 +413,7 @@ async function readSupabaseLeaderboard() {
     return {
       ok: true,
       updatedAt: rows[0]?.updated_at || new Date().toISOString(),
+      week,
       leaderboard
     };
   } catch (error) {
@@ -337,6 +421,36 @@ async function readSupabaseLeaderboard() {
       ok: false,
       error: error.message
     };
+  }
+}
+
+async function readSupabaseWeek() {
+  try {
+    const response = await fetch(`${process.env.SUPABASE_URL}/rest/v1/leaderboard_settings?id=eq.1&select=pot,started_at,ends_at&limit=1`, {
+      headers: {
+        apikey: process.env.SUPABASE_ANON_KEY,
+        authorization: `Bearer ${process.env.SUPABASE_ANON_KEY}`
+      }
+    });
+
+    if (!response.ok) {
+      return defaultWeek();
+    }
+
+    const rows = await response.json();
+    const row = rows[0];
+
+    if (!row) {
+      return defaultWeek();
+    }
+
+    return {
+      pot: numberFrom(row.pot),
+      startedAt: row.started_at,
+      endsAt: row.ends_at
+    };
+  } catch {
+    return defaultWeek();
   }
 }
 
@@ -349,7 +463,7 @@ function fetchSupabaseLeaderboard(select) {
   });
 }
 
-async function saveSupabaseLeaderboard(leaderboard, authHeader) {
+async function saveSupabaseLeaderboard(leaderboard, authHeader, options = { mode: "refresh" }) {
   const user = await readSupabaseUser(authHeader);
 
   if (!user.ok) {
@@ -369,6 +483,22 @@ async function saveSupabaseLeaderboard(leaderboard, authHeader) {
     };
   }
 
+  const existingBaselines = options.mode === "refresh" ? await readSupabaseBaselines(authHeader) : new Map();
+  const weekStartedAt = new Date();
+  const weekEndsAt = new Date(weekStartedAt.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+  if (options.mode === "start") {
+    const settingsSaved = await saveSupabaseWeekSettings(authHeader, {
+      pot: options.pot,
+      startedAt: weekStartedAt.toISOString(),
+      endsAt: weekEndsAt.toISOString()
+    });
+
+    if (!settingsSaved.ok) {
+      return settingsSaved;
+    }
+  }
+
   const cleared = await fetch(`${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries?rank=gte.0`, {
     method: "DELETE",
     headers: {
@@ -386,19 +516,31 @@ async function saveSupabaseLeaderboard(leaderboard, authHeader) {
   }
 
   const now = new Date().toISOString();
-  const rows = leaderboard.map((entry) => ({
-    rank: entry.rank,
-    name: entry.name,
-    wagered: entry.wagered,
-    deposits: entry.deposits,
-    bets: entry.bets,
-    profit: entry.profit,
-    commission_generated: entry.commissionGenerated,
-    first_seen: entry.firstSeen,
-    last_seen: entry.lastSeen,
-    avatar: entry.avatar,
-    updated_at: now
-  }));
+  const rows = leaderboard
+    .map((entry) => {
+      const baseline = options.mode === "start" ? entry.wagered : existingBaselines.get(entry.name) ?? entry.wagered;
+      const weeklyWager = Math.max(entry.wagered - baseline, 0);
+
+      return {
+        name: entry.name,
+        wagered: weeklyWager,
+        current_wager: entry.wagered,
+        baseline_wager: baseline,
+        deposits: entry.deposits,
+        bets: entry.bets,
+        profit: entry.profit,
+        commission_generated: entry.commissionGenerated,
+        first_seen: entry.firstSeen,
+        last_seen: entry.lastSeen,
+        avatar: entry.avatar,
+        updated_at: now
+      };
+    })
+    .sort((a, b) => b.wagered - a.wagered)
+    .map((entry, index) => ({
+      ...entry,
+      rank: index + 1
+    }));
 
   const inserted = await fetch(`${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries`, {
     method: "POST",
@@ -416,6 +558,75 @@ async function saveSupabaseLeaderboard(leaderboard, authHeader) {
       ok: false,
       status: inserted.status,
       error: "Could not save the new leaderboard"
+    };
+  }
+
+  return {
+    ok: true
+  };
+}
+
+async function readSupabaseBaselines(authHeader) {
+  const baselines = new Map();
+
+  try {
+    let response = await fetch(
+      `${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries?select=name,baseline_wager,current_wager,wagered`,
+      {
+        headers: {
+          apikey: process.env.SUPABASE_ANON_KEY,
+          authorization: authHeader
+        }
+      }
+    );
+
+    if (response.status === 400) {
+      response = await fetch(`${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries?select=name,wagered`, {
+        headers: {
+          apikey: process.env.SUPABASE_ANON_KEY,
+          authorization: authHeader
+        }
+      });
+    }
+
+    if (!response.ok) {
+      return baselines;
+    }
+
+    const rows = await response.json();
+    for (const row of rows) {
+      baselines.set(row.name, solAmountFrom(row.baseline_wager ?? row.current_wager ?? row.wagered));
+    }
+  } catch {
+    return baselines;
+  }
+
+  return baselines;
+}
+
+async function saveSupabaseWeekSettings(authHeader, week) {
+  const response = await fetch(`${process.env.SUPABASE_URL}/rest/v1/leaderboard_settings?on_conflict=id`, {
+    method: "POST",
+    headers: {
+      apikey: process.env.SUPABASE_ANON_KEY,
+      authorization: authHeader,
+      "content-type": "application/json",
+      prefer: "resolution=merge-duplicates,return=minimal"
+    },
+    body: JSON.stringify({
+      id: 1,
+      pot: week.pot,
+      started_at: week.startedAt,
+      ends_at: week.endsAt,
+      updated_at: new Date().toISOString()
+    })
+  });
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      status: response.status,
+      error: "Could not save week settings"
     };
   }
 

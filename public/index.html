@@ -38,6 +38,18 @@
       </section>
 
       <section class="podium-section" aria-label="Top 3 affiliates">
+        <div class="week-panel">
+          <div>
+            <p class="eyebrow">Weekly Prize Pool</p>
+            <strong id="potValue">0.0000 SOL</strong>
+          </div>
+          <div class="timer" aria-label="Time left">
+            <span><strong id="timerDays">0</strong>D</span>
+            <span><strong id="timerHours">00</strong>H</span>
+            <span><strong id="timerMinutes">00</strong>Min</span>
+            <span><strong id="timerSeconds">00</strong>Sec</span>
+          </div>
+        </div>
         <div class="podium" id="podium">
           <div class="empty-state">Loading podium...</div>
         </div>
@@ -59,11 +71,12 @@
                 <th>Rank</th>
                 <th>Affiliate</th>
                 <th>Wager</th>
+                <th>Prize</th>
               </tr>
             </thead>
             <tbody id="leaderboardBody">
               <tr>
-                <td colspan="3" class="empty-state">Loading leaderboard...</td>
+                <td colspan="4" class="empty-state">Loading leaderboard...</td>
               </tr>
             </tbody>
           </table>

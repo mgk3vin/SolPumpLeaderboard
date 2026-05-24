@@ -8,6 +8,7 @@ const elements = {
   adminPanel: document.querySelector("#adminPanel"),
   adminEmail: document.querySelector("#adminEmail"),
   adminStatus: document.querySelector("#adminStatus"),
+  startWeekLink: document.querySelector("#startWeekLink"),
   bookmarkletLink: document.querySelector("#bookmarkletLink")
 };
 
@@ -81,10 +82,17 @@ async function renderSession(session) {
   localStorage.setItem("lordpommes_admin_token", session.access_token);
   elements.adminEmail.textContent = email;
 
-  const bookmarklet = await fetch(`/api/bookmarklet?token=${encodeURIComponent(session.access_token)}`).then((response) =>
-    response.json()
-  );
-  elements.bookmarkletLink.href = bookmarklet.bookmarklet;
+  const [startBookmarklet, refreshBookmarklet] = await Promise.all([
+    fetch(`/api/bookmarklet?action=start&token=${encodeURIComponent(session.access_token)}`).then((response) =>
+      response.json()
+    ),
+    fetch(`/api/bookmarklet?action=refresh&token=${encodeURIComponent(session.access_token)}`).then((response) =>
+      response.json()
+    )
+  ]);
+
+  elements.startWeekLink.href = startBookmarklet.bookmarklet;
+  elements.bookmarkletLink.href = refreshBookmarklet.bookmarklet;
   setStatus("Ready for SolPump import.");
 }
 
