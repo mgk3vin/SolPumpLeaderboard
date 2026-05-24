@@ -1,16 +1,17 @@
 :root {
   color-scheme: dark;
-  --bg: #090a0f;
-  --panel: #121722;
-  --panel-soft: #171d2a;
-  --line: rgba(255, 255, 255, 0.1);
+  --bg: #060812;
+  --panel: #0d1020;
+  --panel-soft: #12162a;
+  --line: rgba(143, 156, 255, 0.16);
   --text: #f7f8fb;
-  --muted: #a9b0c2;
-  --accent: #54e08d;
-  --accent-strong: #14c767;
-  --gold: #f7c948;
+  --muted: #aab4d6;
+  --accent: #14f1e8;
+  --accent-strong: #2dd4ff;
+  --violet: #8b5cf6;
+  --gold: #f7d154;
   --silver: #d7dde8;
-  --bronze: #c9894b;
+  --bronze: #d09258;
   --danger: #ff6b6b;
 }
 
@@ -26,8 +27,9 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    radial-gradient(circle at top left, rgba(84, 224, 141, 0.16), transparent 32rem),
-    linear-gradient(160deg, #08090d 0%, #10131c 48%, #07080b 100%);
+    radial-gradient(circle at top left, rgba(20, 241, 232, 0.18), transparent 32rem),
+    radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.18), transparent 34rem),
+    linear-gradient(160deg, #050712 0%, #0e1223 52%, #050610 100%);
   color: var(--text);
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -75,18 +77,18 @@ button,
   width: 38px;
   height: 38px;
   place-items: center;
-  border: 1px solid rgba(84, 224, 141, 0.5);
+  border: 1px solid rgba(20, 241, 232, 0.55);
   border-radius: 8px;
-  background: rgba(84, 224, 141, 0.13);
+  background: rgba(20, 241, 232, 0.12);
   color: var(--accent);
 }
 
 .kick-link,
 button {
   min-height: 40px;
-  border: 1px solid rgba(84, 224, 141, 0.35);
+  border: 1px solid rgba(20, 241, 232, 0.34);
   border-radius: 8px;
-  background: rgba(84, 224, 141, 0.12);
+  background: rgba(20, 241, 232, 0.1);
   color: var(--text);
   font: inherit;
   font-weight: 700;
@@ -103,8 +105,8 @@ button {
 
 button:hover,
 .kick-link:hover {
-  border-color: rgba(84, 224, 141, 0.8);
-  background: rgba(84, 224, 141, 0.2);
+  border-color: rgba(20, 241, 232, 0.75);
+  background: rgba(20, 241, 232, 0.17);
 }
 
 .hero {
@@ -112,20 +114,20 @@ button:hover,
   justify-content: space-between;
   gap: 24px;
   min-height: 250px;
-  padding: 40px;
+  padding: 40px 300px 40px 40px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background:
-    linear-gradient(90deg, rgba(9, 10, 15, 0.95), rgba(9, 10, 15, 0.56)),
-    url("https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1800&q=80")
-      center / cover;
+    radial-gradient(circle at 82% 30%, rgba(20, 241, 232, 0.22), transparent 20rem),
+    radial-gradient(circle at 67% 72%, rgba(139, 92, 246, 0.26), transparent 24rem),
+    linear-gradient(125deg, rgba(6, 8, 18, 0.98), rgba(11, 16, 34, 0.88));
   overflow: hidden;
 }
 
 .hero::before,
 .hero::after {
   position: absolute;
-  color: rgba(247, 201, 72, 0.72);
+  color: rgba(20, 241, 232, 0.55);
   font-size: clamp(2.4rem, 6vw, 4.6rem);
   filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.4));
   opacity: 0.38;
@@ -134,17 +136,24 @@ button:hover,
 }
 
 .hero::before {
-  content: "♕";
+  content: "";
+  width: 220px;
+  height: 220px;
   left: 10%;
   top: 16%;
+  border: 1px solid rgba(20, 241, 232, 0.14);
+  border-radius: 999px;
   transform: rotate(-14deg);
 }
 
 .hero::after {
-  content: "♦";
+  content: "";
+  width: 260px;
+  height: 260px;
   right: 12%;
   bottom: 18%;
-  color: rgba(84, 224, 141, 0.66);
+  border: 1px solid rgba(139, 92, 246, 0.18);
+  border-radius: 999px;
   transform: rotate(10deg);
 }
 
@@ -155,7 +164,7 @@ button:hover,
 .hero-copy {
   position: relative;
   z-index: 1;
-  max-width: 720px;
+  max-width: 650px;
 }
 
 .eyebrow {
@@ -203,15 +212,15 @@ h2 {
   align-items: center;
   gap: 12px;
   margin: 0 0 14px;
-  color: var(--gold);
+  color: var(--accent);
   font-size: clamp(1.3rem, 3vw, 2rem);
   font-weight: 800;
   text-transform: uppercase;
 }
 
 .weekly-offer span {
-  color: var(--gold);
-  filter: drop-shadow(0 6px 12px rgba(247, 201, 72, 0.24));
+  color: var(--accent);
+  filter: drop-shadow(0 6px 12px rgba(20, 241, 232, 0.24));
 }
 
 .play-now-button {
@@ -219,10 +228,10 @@ h2 {
   min-height: 46px;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(84, 224, 141, 0.65);
+  border: 1px solid rgba(20, 241, 232, 0.75);
   border-radius: 8px;
-  background: linear-gradient(180deg, rgba(84, 224, 141, 0.95), rgba(20, 199, 103, 0.9));
-  color: #05110a;
+  background: linear-gradient(135deg, rgba(20, 241, 232, 0.98), rgba(139, 92, 246, 0.95));
+  color: #030612;
   font-weight: 800;
   padding: 0 22px;
   text-decoration: none;
@@ -235,19 +244,55 @@ h2 {
 
 .play-now-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 14px 28px rgba(20, 199, 103, 0.24);
+  box-shadow: 0 14px 28px rgba(20, 241, 232, 0.22);
   filter: brightness(1.05);
 }
 
+.profile-card {
+  position: absolute;
+  right: 54px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  width: clamp(132px, 18vw, 190px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+}
+
+.profile-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border: 2px solid rgba(20, 241, 232, 0.5);
+  border-radius: 24px;
+  box-shadow:
+    0 0 0 8px rgba(20, 241, 232, 0.08),
+    0 26px 58px rgba(0, 0, 0, 0.4),
+    0 0 48px rgba(139, 92, 246, 0.24);
+}
+
+.profile-glow {
+  position: absolute;
+  inset: -18px;
+  border-radius: 34px;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(20, 241, 232, 0.28), transparent 45%),
+    radial-gradient(circle at 70% 80%, rgba(139, 92, 246, 0.32), transparent 52%);
+  filter: blur(12px);
+}
+
 .hero-panel {
-  position: relative;
+  position: absolute;
+  left: 40px;
+  bottom: 32px;
   z-index: 1;
   flex: 0 0 auto;
   gap: 10px;
   padding: 14px 16px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(18, 23, 34, 0.78);
+  background: rgba(10, 14, 29, 0.78);
   backdrop-filter: blur(12px);
   color: var(--muted);
   font-weight: 700;
@@ -309,11 +354,11 @@ h2 {
   min-height: 78px;
   place-items: center;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(20, 241, 232, 0.16);
   border-radius: 8px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.025)),
-    rgba(9, 10, 15, 0.5);
+    linear-gradient(180deg, rgba(20, 241, 232, 0.075), rgba(139, 92, 246, 0.045)),
+    rgba(7, 10, 22, 0.72);
   color: var(--muted);
   font-size: 0.68rem;
   font-weight: 800;
@@ -326,7 +371,7 @@ h2 {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(84, 224, 141, 0.11), transparent);
+  background: linear-gradient(90deg, transparent, rgba(20, 241, 232, 0.14), transparent);
   opacity: 0;
   transform: translateX(-100%);
   animation: timerSheen 4s ease-in-out infinite;
@@ -339,7 +384,7 @@ h2 {
   font-variant-numeric: tabular-nums;
   font-size: clamp(1.65rem, 4vw, 2.15rem);
   line-height: 1;
-  text-shadow: 0 8px 22px rgba(84, 224, 141, 0.16);
+  text-shadow: 0 8px 22px rgba(20, 241, 232, 0.16);
 }
 
 .timer .timer-drop {
@@ -410,7 +455,7 @@ h2 {
 
 .podium-card:hover {
   transform: translateY(-4px);
-  border-color: rgba(84, 224, 141, 0.36);
+  border-color: rgba(20, 241, 232, 0.36);
   background: rgba(255, 255, 255, 0.065);
   box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
 }
@@ -526,7 +571,7 @@ tbody tr:first-child {
 
 tbody tr:hover {
   background: rgba(255, 255, 255, 0.05);
-  box-shadow: inset 3px 0 0 rgba(84, 224, 141, 0.38);
+  box-shadow: inset 3px 0 0 rgba(20, 241, 232, 0.38);
 }
 
 .rank {
@@ -560,8 +605,8 @@ tbody tr:hover {
   place-items: center;
   overflow: hidden;
   border-radius: 8px;
-  border: 1px solid rgba(84, 224, 141, 0.28);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.07), rgba(84, 224, 141, 0.08));
+  border: 1px solid rgba(20, 241, 232, 0.28);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.07), rgba(20, 241, 232, 0.08));
   color: var(--accent);
   font-size: 0.85rem;
   font-weight: 800;
@@ -677,6 +722,20 @@ tbody tr:hover {
   .hero {
     min-height: 310px;
     padding: 34px 24px;
+  }
+
+  .profile-card {
+    position: relative;
+    right: auto;
+    top: auto;
+    transform: none;
+    width: 132px;
+  }
+
+  .hero-panel {
+    position: relative;
+    left: auto;
+    bottom: auto;
   }
 
   .week-panel {
