@@ -62,6 +62,12 @@ button,
   font-weight: 800;
 }
 
+.nav-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .brand-mark {
   display: grid;
   width: 38px;

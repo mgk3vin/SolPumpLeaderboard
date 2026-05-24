@@ -6,6 +6,7 @@ const elements = {
   timerHours: document.querySelector("#timerHours"),
   timerMinutes: document.querySelector("#timerMinutes"),
   timerSeconds: document.querySelector("#timerSeconds"),
+  adminPanelLink: document.querySelector("#adminPanelLink"),
   statusDot: document.querySelector("#statusDot"),
   statusText: document.querySelector("#statusText"),
   refreshButton: document.querySelector("#refreshButton")
@@ -20,6 +21,7 @@ const solFormatter = new Intl.NumberFormat("en-US", {
 });
 
 elements.refreshButton.addEventListener("click", loadLeaderboard);
+showAdminPanelLinkWhenSignedIn();
 loadLeaderboard();
 
 async function loadLeaderboard() {
@@ -139,6 +141,28 @@ function formatSol(value) {
 function setStatus(type, text) {
   elements.statusDot.className = `status-dot ${type === "live" ? "live" : ""} ${type === "error" ? "error" : ""}`;
   elements.statusText.textContent = text;
+}
+
+async function showAdminPanelLinkWhenSignedIn() {
+  const token = localStorage.getItem("lordpommes_admin_token");
+
+  if (!token) {
+    elements.adminPanelLink.hidden = true;
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/admin-status", {
+      headers: {
+        authorization: `Bearer ${token}`
+      }
+    });
+    const payload = await response.json();
+
+    elements.adminPanelLink.hidden = !payload.isAdmin;
+  } catch {
+    elements.adminPanelLink.hidden = true;
+  }
 }
 
 function escapeHtml(value) {
