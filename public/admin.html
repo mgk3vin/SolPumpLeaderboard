@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LordpommesX2 Admin</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <nav class="topbar" aria-label="Hauptnavigation">
+        <div class="brand">
+          <span class="brand-mark">LP</span>
+          <span>LordpommesX2 Admin</span>
+        </div>
+        <a class="kick-link" href="/">Leaderboard</a>
+      </nav>
+
+      <section class="leaderboard-section import-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Admin Login</p>
+            <h2>Leaderboard verwalten</h2>
+          </div>
+          <button id="signOutButton" type="button" hidden>Abmelden</button>
+        </div>
+
+        <div class="admin-grid">
+          <form id="loginForm" class="admin-box">
+            <label for="emailInput">Admin E-Mail</label>
+            <div class="admin-row">
+              <input id="emailInput" type="email" autocomplete="email" required placeholder="name@example.com" />
+              <button type="submit">Login-Link senden</button>
+            </div>
+          </form>
+
+          <div id="adminPanel" class="admin-box" hidden>
+            <span class="admin-label">Eingeloggt als</span>
+            <strong id="adminEmail">-</strong>
+            <a id="bookmarkletLink" class="kick-link admin-bookmarklet" href="#">Leaderboard aktualisieren</a>
+            <p>
+              Zieh den Button in deine Lesezeichenleiste. Oeffne danach SolPump Affiliates und klicke das
+              Lesezeichen.
+            </p>
+          </div>
+        </div>
+
+        <p id="adminStatus" class="admin-status">Admin-Bereich wird geladen...</p>
+      </section>
+    </main>
+
+    <script type="module" src="/admin.js"></script>
+  </body>
+</html>

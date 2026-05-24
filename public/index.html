@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LordpommesX2 Wager Leaderboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <nav class="topbar" aria-label="Hauptnavigation">
+        <div class="brand">
+          <span class="brand-mark">LP</span>
+          <span>LordpommesX2</span>
+        </div>
+        <a class="kick-link" href="https://kick.com/LordpommesX2" target="_blank" rel="noreferrer">
+          Kick öffnen
+        </a>
+      </nav>
+
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Affiliate Wager Race</p>
+          <h1>LordpommesX2 Leaderboard</h1>
+          <p>
+            Live-Ranking für SolPump Affiliates, sortiert nach Wager. Die Daten laufen serverseitig
+            über deine SolPump Session.
+          </p>
+        </div>
+
+        <div class="hero-panel" aria-label="Leaderboard Status">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="statusText">Daten werden geladen</span>
+        </div>
+      </section>
+
+      <section class="summary-grid" aria-label="Zusammenfassung">
+        <article>
+          <span>Gesamter Wager</span>
+          <strong id="totalWager">-</strong>
+        </article>
+        <article>
+          <span>Affiliates</span>
+          <strong id="totalAffiliates">-</strong>
+        </article>
+        <article>
+          <span>Gesamte Bets</span>
+          <strong id="totalBets">-</strong>
+        </article>
+        <article>
+          <span>Update</span>
+          <strong id="lastUpdate">-</strong>
+        </article>
+      </section>
+
+      <section class="leaderboard-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Main Leaderboard</p>
+            <h2>Top Affiliates</h2>
+          </div>
+          <button id="refreshButton" type="button">Aktualisieren</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Rang</th>
+                <th>Affiliate</th>
+                <th>Wager</th>
+                <th>Deposits</th>
+                <th>Bets</th>
+                <th>Profit</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboardBody">
+              <tr>
+                <td colspan="6" class="empty-state">Leaderboard wird geladen...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
