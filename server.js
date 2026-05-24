@@ -279,10 +279,10 @@ function censorName(name) {
   const value = String(name || "Affiliate");
 
   if (value.length <= 4) {
-    return `${value.slice(0, 1)}${"*".repeat(Math.max(value.length - 1, 1))}`;
+    return `${value.slice(0, 1)}*****${value.slice(-1)}`;
   }
 
-  return `${value.slice(0, 2)}${"*".repeat(Math.max(value.length - 4, 3))}${value.slice(-2)}`;
+  return `${value.slice(0, 2)}*****${value.slice(-2)}`;
 }
 
 function hasSupabaseConfig() {
