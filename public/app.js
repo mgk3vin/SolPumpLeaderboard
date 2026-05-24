@@ -65,7 +65,6 @@ function renderPodium(rows) {
     .map(
       (row) => `
         <article class="podium-card podium-rank-${row.rank}">
-          <div class="podium-medal">#${row.rank}</div>
           <span class="avatar podium-avatar">${renderAvatar(row)}</span>
           <small>${placeLabel(row.rank)}</small>
           <strong>${escapeHtml(row.name)}</strong>
