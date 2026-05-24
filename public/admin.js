@@ -105,9 +105,18 @@ async function renderSession(session) {
     )
   ]);
 
+  if (!startBookmarklet.ok || !refreshBookmarklet.ok) {
+    setStatus(startBookmarklet.error || refreshBookmarklet.error || "Could not create bookmarklets.");
+    return;
+  }
+
   elements.startWeekLink.href = startBookmarklet.bookmarklet;
   elements.bookmarkletLink.href = refreshBookmarklet.bookmarklet;
-  setStatus("Ready for SolPump import.");
+  setStatus(
+    refreshBookmarklet.mode === "import-token"
+      ? "Ready for SolPump import. Drag the updated bookmarks into Chrome once."
+      : "Ready for SolPump import. Bookmark links expire with the admin login."
+  );
   await loadEntries();
 }
 

@@ -1,4 +1,5 @@
 import http from "node:http";
+import { timingSafeEqual } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -51,7 +52,7 @@ const server = http.createServer(async (request, response) => {
     }
 
     if (url.pathname === "/api/bookmarklet") {
-      sendBookmarklet(response, url);
+      await sendBookmarklet(request, response, url);
       return;
     }
 
@@ -160,12 +161,26 @@ async function receiveBrowserIngest(request, response) {
   const requestBody = JSON.parse(body);
   const payload = requestBody.payload || requestBody;
   const leaderboard = normalizeSolPumpPayload(payload);
-  const authHeader = request.headers.authorization || "";
+  const adminAuth = await resolveImportAuth(request);
+  const hasAdminCredential = Boolean(request.headers.authorization || request.headers["x-admin-import-token"]);
 
-  if (hasSupabaseConfig() && authHeader.startsWith("Bearer ")) {
-    const saved = await saveSupabaseLeaderboard(leaderboard, authHeader, {
-      mode: "refresh"
+  if (hasSupabaseConfig() && hasAdminCredential && !adminAuth.ok) {
+    sendJson(response, adminAuth.status || 401, {
+      ok: false,
+      error: adminAuth.error || "Admin login required"
     });
+    return;
+  }
+
+  if (hasSupabaseConfig() && adminAuth.ok) {
+    const saved = await saveSupabaseLeaderboard(
+      leaderboard,
+      adminAuth.authHeader,
+      {
+        mode: "refresh"
+      },
+      adminAuth
+    );
 
     if (!saved.ok) {
       sendJson(response, saved.status || 500, {
@@ -199,12 +214,12 @@ async function receiveWeekStart(request, response) {
   const requestBody = JSON.parse(body);
   const leaderboard = normalizeSolPumpPayload(requestBody.payload || requestBody);
   const pot = numberFrom(requestBody.pot);
-  const authHeader = request.headers.authorization || "";
+  const adminAuth = await resolveImportAuth(request);
 
-  if (!hasSupabaseConfig() || !authHeader.startsWith("Bearer ")) {
-    sendJson(response, 401, {
+  if (!hasSupabaseConfig() || !adminAuth.ok) {
+    sendJson(response, adminAuth.status || 401, {
       ok: false,
-      error: "Admin login required"
+      error: adminAuth.error || "Admin login required"
     });
     return;
   }
@@ -217,10 +232,15 @@ async function receiveWeekStart(request, response) {
     return;
   }
 
-  const saved = await saveSupabaseLeaderboard(leaderboard, authHeader, {
-    mode: "start",
-    pot
-  });
+  const saved = await saveSupabaseLeaderboard(
+    leaderboard,
+    adminAuth.authHeader,
+    {
+      mode: "start",
+      pot
+    },
+    adminAuth
+  );
 
   if (!saved.ok) {
     sendJson(response, saved.status || 500, {
@@ -237,22 +257,36 @@ async function receiveWeekStart(request, response) {
   });
 }
 
-function sendBookmarklet(response, requestUrl) {
+async function sendBookmarklet(request, response, requestUrl) {
   const solPumpPath = new URL(process.env.SOLPUMP_API_URL || "https://solpump.io/api/v1/affiliate?sort=Most+Wagered").pathname;
   const solPumpQuery = new URL(process.env.SOLPUMP_API_URL || "https://solpump.io/api/v1/affiliate?sort=Most+Wagered").search;
   const apiPath = `${solPumpPath}${solPumpQuery}`;
   const action = requestUrl.searchParams.get("action") === "start" ? "start" : "refresh";
   const targetPath = action === "start" ? "/api/start-week" : "/api/ingest";
   const ingestUrl = process.env.PUBLIC_BASE_URL ? `${process.env.PUBLIC_BASE_URL.replace(/\/$/, "")}${targetPath}` : `http://localhost:${port}${targetPath}`;
-  const token = requestUrl.searchParams.get("token") || "";
-  const tokenExpression = token ? JSON.stringify(token) : `localStorage.getItem("lordpommes_admin_token")`;
+  const sessionToken = requestUrl.searchParams.get("token") || "";
+  const admin = await requireAdmin(sessionToken ? `Bearer ${sessionToken}` : request.headers.authorization || "");
+
+  if (!admin.ok) {
+    sendJson(response, admin.status || 401, {
+      ok: false,
+      error: admin.error || "Admin login required"
+    });
+    return;
+  }
+
+  const importToken = process.env.ADMIN_IMPORT_TOKEN || "";
+  const authHeaderExpression = importToken
+    ? `{"content-type":"application/json","x-admin-import-token":${JSON.stringify(importToken)}}`
+    : `{"content-type":"application/json","authorization":"Bearer "+${JSON.stringify(sessionToken)}}`;
   const potScript = action === "start" ? `const pot=Number(prompt("Prize pot in SOL","10"));if(!Number.isFinite(pot)||pot<=0){alert("Please enter a valid SOL pot.");return;}` : `const pot=null;`;
   const bodyExpression = action === "start" ? `{payload:j,pot}` : `{payload:j}`;
   const successText = action === "start" ? `"New leaderboard week started: "+o.rows+" affiliates, "+o.pot+" SOL pot"` : `"Leaderboard refreshed: "+o.rows+" affiliates"`;
-  const script = `(async()=>{if(location.hostname!=="solpump.io"){alert("Open SolPump Affiliates first, then click this bookmark again.");location.href="https://solpump.io/affiliates";return;}const t=${tokenExpression};if(!t){alert("Please sign in to the admin panel first.");return;}${potScript}const r=await fetch(${JSON.stringify(apiPath)},{credentials:"include"});const j=await r.json();const p=await fetch(${JSON.stringify(ingestUrl)},{method:"POST",headers:{"content-type":"application/json","authorization":"Bearer "+t},body:JSON.stringify(${bodyExpression})});const text=await p.text();let o;try{o=JSON.parse(text)}catch{throw new Error("Import endpoint did not return JSON. Check PUBLIC_BASE_URL and redeploy: "+${JSON.stringify(ingestUrl)}+" returned "+text.slice(0,80))}if(!p.ok||!o.ok)throw new Error(o.error||"Import failed");alert(${successText});})().catch(e=>alert("Leaderboard import failed: "+e.message));`;
+  const script = `(async()=>{if(location.hostname!=="solpump.io"){alert("Open SolPump Affiliates first, then click this bookmark again.");location.href="https://solpump.io/affiliates";return;}${potScript}const r=await fetch(${JSON.stringify(apiPath)},{credentials:"include"});const j=await r.json();const p=await fetch(${JSON.stringify(ingestUrl)},{method:"POST",headers:${authHeaderExpression},body:JSON.stringify(${bodyExpression})});const text=await p.text();let o;try{o=JSON.parse(text)}catch{throw new Error("Import endpoint did not return JSON. Check PUBLIC_BASE_URL and redeploy: "+${JSON.stringify(ingestUrl)}+" returned "+text.slice(0,80))}if(!p.ok||!o.ok)throw new Error(o.error||"Import failed");alert(${successText});})().catch(e=>alert("Leaderboard import failed: "+e.message));`;
 
   sendJson(response, 200, {
     ok: true,
+    mode: importToken ? "import-token" : "session-token",
     bookmarklet: `javascript:${encodeURIComponent(script)}`
   });
 }
@@ -354,6 +388,63 @@ async function requireAdmin(authHeader) {
     ok: true,
     email: user.email
   };
+}
+
+async function resolveImportAuth(request) {
+  const importToken = request.headers["x-admin-import-token"];
+
+  if (importToken) {
+    if (!isValidImportToken(importToken)) {
+      return {
+        ok: false,
+        status: 403,
+        error: "Import token is invalid"
+      };
+    }
+
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return {
+        ok: false,
+        status: 500,
+        error: "SUPABASE_SERVICE_ROLE_KEY is missing for long-lived bookmark imports"
+      };
+    }
+
+    return {
+      ok: true,
+      trustedImport: true,
+      authHeader: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
+    };
+  }
+
+  const authHeader = request.headers.authorization || "";
+  if (!authHeader.startsWith("Bearer ")) {
+    return {
+      ok: false,
+      status: 401,
+      error: "Admin login required"
+    };
+  }
+
+  const admin = await requireAdmin(authHeader);
+  return {
+    ...admin,
+    trustedImport: false,
+    authHeader
+  };
+}
+
+function isValidImportToken(value) {
+  const expected = process.env.ADMIN_IMPORT_TOKEN || "";
+
+  if (!expected || !value) {
+    return false;
+  }
+
+  const actualBuffer = Buffer.from(String(value));
+  const expectedBuffer = Buffer.from(expected);
+
+  return actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer);
 }
 
 function buildSolPumpHeaders(endpoint, cookie) {
@@ -739,24 +830,27 @@ async function replaceAdminEntries(authHeader, entries) {
   return listAdminEntries(authHeader);
 }
 
-async function saveSupabaseLeaderboard(leaderboard, authHeader, options = { mode: "refresh" }) {
-  const user = await readSupabaseUser(authHeader);
+async function saveSupabaseLeaderboard(leaderboard, authHeader, options = { mode: "refresh" }, authContext = {}) {
+  if (!authContext.trustedImport) {
+    const user = await readSupabaseUser(authHeader);
 
-  if (!user.ok) {
-    return {
-      ok: false,
-      status: 401,
-      error: "Admin login expired or is invalid"
-    };
-  }
+    if (!user.ok) {
+      return {
+        ok: false,
+        status: 401,
+        error:
+          "Admin login expired or is invalid. Open the admin panel again and drag the updated bookmarklet into Chrome."
+      };
+    }
 
-  const adminEmails = parseAdminEmails();
-  if (!adminEmails.includes(user.email.toLowerCase())) {
-    return {
-      ok: false,
-      status: 403,
-      error: "This email is not enabled as an admin"
-    };
+    const adminEmails = parseAdminEmails();
+    if (!adminEmails.includes(user.email.toLowerCase())) {
+      return {
+        ok: false,
+        status: 403,
+        error: "This email is not enabled as an admin"
+      };
+    }
   }
 
   const existingBaselines = options.mode === "refresh" ? await readSupabaseBaselines(authHeader) : new Map();
@@ -1046,8 +1140,8 @@ function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, {
     "content-type": "application/json; charset=utf-8",
     "access-control-allow-origin": "*",
-    "access-control-allow-methods": "GET,POST,OPTIONS",
-    "access-control-allow-headers": "authorization,content-type",
+    "access-control-allow-methods": "GET,POST,PATCH,DELETE,OPTIONS",
+    "access-control-allow-headers": "authorization,content-type,x-admin-import-token",
     "cache-control": "no-store"
   });
   response.end(JSON.stringify(payload));
@@ -1056,8 +1150,8 @@ function sendJson(response, statusCode, payload) {
 function sendCors(response, statusCode) {
   response.writeHead(statusCode, {
     "access-control-allow-origin": "*",
-    "access-control-allow-methods": "GET,POST,OPTIONS",
-    "access-control-allow-headers": "authorization,content-type",
+    "access-control-allow-methods": "GET,POST,PATCH,DELETE,OPTIONS",
+    "access-control-allow-headers": "authorization,content-type,x-admin-import-token",
     "cache-control": "no-store"
   });
   response.end();
