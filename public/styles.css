@@ -95,6 +95,12 @@ button {
   cursor: pointer;
 }
 
+.section-heading button {
+  min-height: 34px;
+  padding: 0 11px;
+  font-size: 0.86rem;
+}
+
 button:hover,
 .kick-link:hover {
   border-color: rgba(84, 224, 141, 0.8);
@@ -104,8 +110,8 @@ button:hover,
 .hero {
   justify-content: space-between;
   gap: 24px;
-  min-height: 330px;
-  padding: 56px;
+  min-height: 250px;
+  padding: 40px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background:
@@ -116,7 +122,7 @@ button:hover,
 }
 
 .compact-hero {
-  min-height: 280px;
+  min-height: 240px;
 }
 
 .hero-copy {
@@ -140,7 +146,7 @@ p {
 
 h1 {
   margin-bottom: 16px;
-  font-size: clamp(2.5rem, 8vw, 5.8rem);
+  font-size: clamp(2.35rem, 6vw, 4.7rem);
   line-height: 0.95;
   letter-spacing: 0;
 }
@@ -235,7 +241,7 @@ h2 {
   color: var(--muted);
   font-size: 0.68rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
@@ -364,6 +370,14 @@ h2 {
   overflow-wrap: anywhere;
 }
 
+.podium-card small {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .podium-card span:last-child {
   color: var(--accent);
   font-weight: 800;
@@ -389,13 +403,19 @@ h2 {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 680px;
+  min-width: 620px;
 }
 
 th,
 td {
   padding: 18px 22px;
   text-align: left;
+}
+
+th:nth-child(3),
+th:nth-child(4),
+td.numeric {
+  text-align: right;
 }
 
 th {
@@ -447,7 +467,8 @@ tbody tr:hover {
   place-items: center;
   overflow: hidden;
   border-radius: 8px;
-  background: linear-gradient(135deg, rgba(84, 224, 141, 0.25), rgba(247, 201, 72, 0.16));
+  border: 1px solid rgba(84, 224, 141, 0.28);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.07), rgba(84, 224, 141, 0.08));
   color: var(--accent);
   font-size: 0.85rem;
   font-weight: 800;
@@ -561,12 +582,8 @@ tbody tr:hover {
   }
 
   .hero {
-    min-height: 420px;
+    min-height: 310px;
     padding: 34px 24px;
-  }
-
-  .podium {
-    grid-template-columns: 1fr;
   }
 
   .week-panel {
@@ -578,15 +595,10 @@ tbody tr:hover {
     width: 100%;
   }
 
-  .podium-card,
-  .podium-rank-1,
-  .podium-rank-2,
-  .podium-rank-3 {
-    min-height: 160px;
-  }
-
-  .podium-rank-1 {
-    order: -1;
+  .podium {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow-x: auto;
+    padding-bottom: 4px;
   }
 }
 

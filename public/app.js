@@ -40,7 +40,7 @@ async function loadLeaderboard() {
     const rows = (payload.leaderboard || []).slice(0, 10);
     renderWeek(payload.week);
     renderPodium(rows.slice(0, 3));
-    renderLeaderboard(rows);
+    renderLeaderboard(rows.slice(3));
     setStatus(
       payload.source === "demo" ? "demo" : "live",
       payload.source === "demo" ? "Demo data active" : "Live leaderboard"
@@ -67,6 +67,7 @@ function renderPodium(rows) {
         <article class="podium-card podium-rank-${row.rank}">
           <div class="podium-medal">#${row.rank}</div>
           <span class="avatar podium-avatar">${renderAvatar(row)}</span>
+          <small>${placeLabel(row.rank)}</small>
           <strong>${escapeHtml(row.name)}</strong>
           <span>${formatSol(row.wagered)}</span>
           <em>${formatSol(row.prize)} prize</em>
@@ -93,12 +94,22 @@ function renderLeaderboard(rows) {
               <span>${escapeHtml(row.name)}</span>
             </div>
           </td>
-          <td>${formatSol(row.wagered)}</td>
-          <td class="positive">${formatSol(row.prize)}</td>
+          <td class="numeric">${formatSol(row.wagered)}</td>
+          <td class="positive numeric">${formatSol(row.prize)}</td>
         </tr>
       `
     )
     .join("");
+}
+
+function placeLabel(rank) {
+  const labels = {
+    1: "1st Place",
+    2: "2nd Place",
+    3: "3rd Place"
+  };
+
+  return labels[rank] || `${rank}th Place`;
 }
 
 function renderWeek(week) {
