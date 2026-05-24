@@ -311,7 +311,7 @@ async function sendAdminStatus(request, response) {
   }
 
   const user = await readSupabaseUser(authHeader);
-  const isAdmin = user.ok && parseAdminEmails().includes(user.email.toLowerCase());
+  const isAdmin = user.ok && (await isAdminUser(authHeader, user.email));
 
   sendJson(response, 200, {
     ok: true,
@@ -376,7 +376,7 @@ async function requireAdmin(authHeader) {
 
   const user = await readSupabaseUser(authHeader);
 
-  if (!user.ok || !parseAdminEmails().includes(user.email.toLowerCase())) {
+  if (!user.ok || !(await isAdminUser(authHeader, user.email))) {
     return {
       ok: false,
       status: 403,
@@ -545,6 +545,43 @@ function parseAdminEmails() {
     .split(",")
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean);
+}
+
+async function isAdminUser(authHeader, email) {
+  const normalizedEmail = String(email || "").toLowerCase();
+
+  if (!normalizedEmail) {
+    return false;
+  }
+
+  if (parseAdminEmails().includes(normalizedEmail)) {
+    return true;
+  }
+
+  return readSupabaseAdminUser(authHeader, normalizedEmail);
+}
+
+async function readSupabaseAdminUser(authHeader, email) {
+  try {
+    const response = await fetch(
+      `${process.env.SUPABASE_URL}/rest/v1/admin_users?email=eq.${encodeURIComponent(email)}&select=email&limit=1`,
+      {
+        headers: {
+          apikey: process.env.SUPABASE_ANON_KEY,
+          authorization: authHeader
+        }
+      }
+    );
+
+    if (!response.ok) {
+      return false;
+    }
+
+    const rows = await response.json();
+    return rows.some((row) => String(row.email || "").toLowerCase() === email);
+  } catch {
+    return false;
+  }
 }
 
 async function readSupabaseLeaderboard() {
@@ -1039,8 +1076,7 @@ async function saveSupabaseLeaderboard(leaderboard, authHeader, options = { mode
       };
     }
 
-    const adminEmails = parseAdminEmails();
-    if (!adminEmails.includes(user.email.toLowerCase())) {
+    if (!(await isAdminUser(authHeader, user.email))) {
       return {
         ok: false,
         status: 403,

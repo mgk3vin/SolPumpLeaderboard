@@ -47,7 +47,7 @@ on conflict (email) do nothing;
 6. In Supabase, create a user for the admin email under `Authentication > Users`.
 7. Open the admin page: `http://localhost:3000/admin.html`
 
-The public page only reads from Supabase. Admin panel writes are only allowed for signed-in admins whose email exists in Supabase Auth, `admin_users`, and `ADMIN_EMAILS`. Bookmarklet imports use `ADMIN_IMPORT_TOKEN` plus the server-only `SUPABASE_SERVICE_ROLE_KEY`, so the refresh bookmark does not break when the Supabase browser login expires.
+The public page only reads from Supabase. Admin panel writes are only allowed for signed-in admins whose email exists in Supabase Auth and either `admin_users` or `ADMIN_EMAILS`. Bookmarklet imports use `ADMIN_IMPORT_TOKEN` plus the server-only `SUPABASE_SERVICE_ROLE_KEY`, so the refresh bookmark does not break when the Supabase browser login expires.
 
 Generate a strong `ADMIN_IMPORT_TOKEN` locally with:
 
