@@ -16,7 +16,7 @@ let weekEndsAt = null;
 let timerInterval = null;
 
 const solFormatter = new Intl.NumberFormat("en-US", {
-  minimumFractionDigits: 4,
+  minimumFractionDigits: 0,
   maximumFractionDigits: 4
 });
 
@@ -85,7 +85,7 @@ function renderLeaderboard(rows) {
     .map(
       (row) => `
         <tr>
-          <td class="rank">#${row.rank}</td>
+          <td class="rank rank-${row.rank}">#${row.rank}</td>
           <td>
             <div class="affiliate">
               <span class="avatar">${renderAvatar(row)}</span>

@@ -9,6 +9,8 @@
   --accent: #54e08d;
   --accent-strong: #14c767;
   --gold: #f7c948;
+  --silver: #d7dde8;
+  --bronze: #c9894b;
   --danger: #ff6b6b;
 }
 
@@ -281,16 +283,28 @@ h2 {
 
 .podium-rank-2 {
   min-height: 205px;
+  border-color: rgba(215, 221, 232, 0.38);
+  background: linear-gradient(180deg, rgba(215, 221, 232, 0.11), rgba(255, 255, 255, 0.045));
 }
 
 .podium-rank-3 {
   min-height: 180px;
+  border-color: rgba(201, 137, 75, 0.38);
+  background: linear-gradient(180deg, rgba(201, 137, 75, 0.12), rgba(255, 255, 255, 0.045));
 }
 
 .podium-medal {
   color: var(--gold);
   font-size: 1.2rem;
   font-weight: 800;
+}
+
+.podium-rank-2 .podium-medal {
+  color: var(--silver);
+}
+
+.podium-rank-3 .podium-medal {
+  color: var(--bronze);
 }
 
 .podium-avatar {
@@ -357,8 +371,20 @@ tbody tr:hover {
 }
 
 .rank {
-  color: var(--gold);
+  color: #eef2f7;
   font-weight: 800;
+}
+
+.rank-1 {
+  color: var(--gold);
+}
+
+.rank-2 {
+  color: var(--silver);
+}
+
+.rank-3 {
+  color: var(--bronze);
 }
 
 .affiliate {
