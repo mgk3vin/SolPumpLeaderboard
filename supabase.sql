@@ -97,6 +97,26 @@ using (
   )
 );
 
+drop policy if exists "Admin leaderboard update" on public.leaderboard_entries;
+create policy "Admin leaderboard update"
+on public.leaderboard_entries
+for update
+to authenticated
+using (
+  exists (
+    select 1
+    from public.admin_users
+    where admin_users.email = lower(auth.jwt() ->> 'email')
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.admin_users
+    where admin_users.email = lower(auth.jwt() ->> 'email')
+  )
+);
+
 drop policy if exists "Admin settings insert" on public.leaderboard_settings;
 create policy "Admin settings insert"
 on public.leaderboard_settings

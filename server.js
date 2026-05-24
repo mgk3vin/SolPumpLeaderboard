@@ -715,11 +715,12 @@ async function createAdminEntry(authHeader, body) {
 
   const maxRank = entriesResult.entries.reduce((highest, entry) => Math.max(highest, numberFrom(entry.storedRank)), 0);
   const now = new Date().toISOString();
+  const writeAuthHeader = supabaseWriteAuthHeader(authHeader);
   const inserted = await fetch(`${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries`, {
     method: "POST",
     headers: {
       apikey: process.env.SUPABASE_ANON_KEY,
-      authorization: authHeader,
+      authorization: writeAuthHeader,
       "content-type": "application/json",
       prefer: "return=minimal"
     },
@@ -742,10 +743,11 @@ async function createAdminEntry(authHeader, body) {
   });
 
   if (!inserted.ok) {
+    const details = await readSupabaseError(inserted);
     return {
       ok: false,
       status: inserted.status,
-      error: "Could not create user"
+      error: `Could not create user${details ? `: ${details}` : ""}`
     };
   }
 
@@ -794,11 +796,12 @@ async function updateAdminEntry(authHeader, body) {
     };
   }
 
+  const writeAuthHeader = supabaseWriteAuthHeader(authHeader);
   const updated = await fetch(`${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries?name=eq.${encodeURIComponent(name)}`, {
     method: "PATCH",
     headers: {
       apikey: process.env.SUPABASE_ANON_KEY,
-      authorization: authHeader,
+      authorization: writeAuthHeader,
       "content-type": "application/json",
       prefer: "return=minimal"
     },
@@ -812,11 +815,12 @@ async function updateAdminEntry(authHeader, body) {
   });
 
   if (!updated.ok) {
+    const details = await readSupabaseError(updated);
     return {
       ok: false,
       status: updated.status,
-      error: "Could not update user"
-    }
+      error: `Could not update user${details ? `: ${details}` : ""}`
+    };
   }
 
   const refreshed = await listAdminEntries(authHeader);
@@ -840,19 +844,21 @@ async function deleteAdminEntry(authHeader, body) {
     };
   }
 
+  const writeAuthHeader = supabaseWriteAuthHeader(authHeader);
   const deleted = await fetch(`${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries?name=eq.${encodeURIComponent(name)}`, {
     method: "DELETE",
     headers: {
       apikey: process.env.SUPABASE_ANON_KEY,
-      authorization: authHeader
+      authorization: writeAuthHeader
     }
   });
 
   if (!deleted.ok) {
+    const details = await readSupabaseError(deleted);
     return {
       ok: false,
       status: deleted.status,
-      error: "Could not delete user"
+      error: `Could not delete user${details ? `: ${details}` : ""}`
     };
   }
 
@@ -926,6 +932,26 @@ async function replaceAdminEntries(authHeader, entries) {
   }
 
   return listAdminEntries(authHeader);
+}
+
+function supabaseWriteAuthHeader(authHeader) {
+  return process.env.SUPABASE_SERVICE_ROLE_KEY ? `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` : authHeader;
+}
+
+async function readSupabaseError(response) {
+  try {
+    const text = await response.text();
+    if (!text) return "";
+
+    try {
+      const payload = JSON.parse(text);
+      return payload.message || payload.details || payload.hint || text;
+    } catch {
+      return text.slice(0, 180);
+    }
+  } catch {
+    return "";
+  }
 }
 
 async function saveSupabaseLeaderboard(leaderboard, authHeader, options = { mode: "refresh" }, authContext = {}) {
