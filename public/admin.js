@@ -3,6 +3,7 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const elements = {
   loginForm: document.querySelector("#loginForm"),
   emailInput: document.querySelector("#emailInput"),
+  passwordInput: document.querySelector("#passwordInput"),
   signOutButton: document.querySelector("#signOutButton"),
   adminPanel: document.querySelector("#adminPanel"),
   adminEmail: document.querySelector("#adminEmail"),
@@ -24,7 +25,7 @@ async function boot() {
   }
 
   supabase = createClient(config.supabaseUrl, config.supabaseAnonKey);
-  elements.loginForm.addEventListener("submit", sendLoginLink);
+  elements.loginForm.addEventListener("submit", signInWithPassword);
   elements.signOutButton.addEventListener("click", signOut);
 
   const {
@@ -38,15 +39,14 @@ async function boot() {
   });
 }
 
-async function sendLoginLink(event) {
+async function signInWithPassword(event) {
   event.preventDefault();
   const email = elements.emailInput.value.trim().toLowerCase();
+  const password = elements.passwordInput.value;
 
-  const { error } = await supabase.auth.signInWithOtp({
+  const { error } = await supabase.auth.signInWithPassword({
     email,
-    options: {
-      emailRedirectTo: `${window.location.origin}/admin.html`
-    }
+    password
   });
 
   if (error) {
@@ -54,7 +54,7 @@ async function sendLoginLink(event) {
     return;
   }
 
-  setStatus("Login-Link wurde gesendet. Danach diese Seite erneut oeffnen.");
+  setStatus("Login erfolgreich.");
 }
 
 async function renderSession(session) {

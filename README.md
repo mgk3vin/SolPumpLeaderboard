@@ -42,9 +42,10 @@ on conflict (email) do nothing;
 ```
 
 5. In `.env` `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `ADMIN_EMAILS` und beim Hosting `PUBLIC_BASE_URL` setzen.
-6. Admin-Seite oeffnen: `http://localhost:3000/admin.html`
+6. In Supabase unter `Authentication > Users` einen User fuer die Admin-Mail anlegen.
+7. Admin-Seite oeffnen: `http://localhost:3000/admin.html`
 
-Die oeffentliche Seite liest nur aus Supabase. Schreiben darf nur ein eingeloggter Admin, dessen E-Mail in Supabase und in `ADMIN_EMAILS` eingetragen ist.
+Die oeffentliche Seite liest nur aus Supabase. Schreiben darf nur ein eingeloggter Admin, dessen E-Mail in Supabase Auth, in `admin_users` und in `ADMIN_EMAILS` eingetragen ist.
 
 ## Falls Cloudflare den Server blockt
 
