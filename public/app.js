@@ -2,6 +2,7 @@ const elements = {
   body: document.querySelector("#leaderboardBody"),
   podium: document.querySelector("#podium"),
   potValue: document.querySelector("#potValue"),
+  heroPotValue: document.querySelector("#heroPotValue"),
   timerDays: document.querySelector("#timerDays"),
   timerHours: document.querySelector("#timerHours"),
   timerMinutes: document.querySelector("#timerMinutes"),
@@ -113,6 +114,7 @@ function placeLabel(rank) {
 
 function renderWeek(week) {
   elements.potValue.textContent = formatSol(week?.pot || 0);
+  elements.heroPotValue.textContent = `${formatSol(week?.pot || 0)} Weekly`;
   weekEndsAt = week?.endsAt ? new Date(week.endsAt) : null;
 
   if (!timerInterval) {

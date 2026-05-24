@@ -62,8 +62,8 @@ Admin flow:
 The public leaderboard shows the top 10 by weekly wager difference. Prize split:
 
 ```text
-1st 35%, 2nd 20%, 3rd 15%, 4th 10%, 5th 7%,
-6th 5%, 7th 3%, 8th 2%, 9th 2%, 10th 1%
+1st 50%, 2nd 25%, 3rd 12.5%, 4th 6.25%,
+5th 3.75%, 6th 1.25%, 7th 0.625%, 8th 0.625%
 ```
 
 ## If Cloudflare Blocks the Server

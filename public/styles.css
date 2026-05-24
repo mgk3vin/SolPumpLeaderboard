@@ -108,6 +108,7 @@ button:hover,
 }
 
 .hero {
+  position: relative;
   justify-content: space-between;
   gap: 24px;
   min-height: 250px;
@@ -121,11 +122,39 @@ button:hover,
   overflow: hidden;
 }
 
+.hero::before,
+.hero::after {
+  position: absolute;
+  color: rgba(247, 201, 72, 0.72);
+  font-size: clamp(2.4rem, 6vw, 4.6rem);
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.4));
+  opacity: 0.38;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero::before {
+  content: "♕";
+  left: 10%;
+  top: 16%;
+  transform: rotate(-14deg);
+}
+
+.hero::after {
+  content: "♦";
+  right: 12%;
+  bottom: 18%;
+  color: rgba(84, 224, 141, 0.66);
+  transform: rotate(10deg);
+}
+
 .compact-hero {
   min-height: 240px;
 }
 
 .hero-copy {
+  position: relative;
+  z-index: 1;
   max-width: 720px;
 }
 
@@ -145,7 +174,7 @@ p {
 }
 
 h1 {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   font-size: clamp(2.35rem, 6vw, 4.7rem);
   line-height: 0.95;
   letter-spacing: 0;
@@ -159,13 +188,60 @@ h2 {
 
 .hero p:not(.eyebrow) {
   max-width: 620px;
-  margin-bottom: 0;
+  margin-bottom: 18px;
   color: #d8dde8;
   font-size: 1.08rem;
   line-height: 1.7;
 }
 
+.hero p strong {
+  color: var(--text);
+}
+
+.weekly-offer {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 14px;
+  color: var(--gold);
+  font-size: clamp(1.3rem, 3vw, 2rem);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.weekly-offer span {
+  color: var(--gold);
+  filter: drop-shadow(0 6px 12px rgba(247, 201, 72, 0.24));
+}
+
+.play-now-button {
+  display: inline-flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(84, 224, 141, 0.65);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(84, 224, 141, 0.95), rgba(20, 199, 103, 0.9));
+  color: #05110a;
+  font-weight: 800;
+  padding: 0 22px;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    filter 160ms ease;
+}
+
+.play-now-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(20, 199, 103, 0.24);
+  filter: brightness(1.05);
+}
+
 .hero-panel {
+  position: relative;
+  z-index: 1;
   flex: 0 0 auto;
   gap: 10px;
   padding: 14px 16px;

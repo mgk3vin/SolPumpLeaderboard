@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, "public");
 const port = Number(process.env.PORT || 3000);
 let browserIngest = null;
-const prizeSplit = [35, 20, 15, 10, 7, 5, 3, 2, 2, 1];
+const prizeSplit = [50, 25, 12.5, 6.25, 3.75, 1.25, 0.625, 0.625, 0, 0];
 
 await loadEnv();
 const solPumpHeaderFile = path.join(__dirname, ".solpump-headers.json");
