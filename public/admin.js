@@ -98,12 +98,16 @@ async function renderSession(session) {
   elements.adminEmail.textContent = email;
 
   const [startBookmarklet, refreshBookmarklet] = await Promise.all([
-    fetch(`/api/bookmarklet?action=start&token=${encodeURIComponent(session.access_token)}`).then((response) =>
-      response.json()
-    ),
-    fetch(`/api/bookmarklet?action=refresh&token=${encodeURIComponent(session.access_token)}`).then((response) =>
-      response.json()
-    )
+    fetch("/api/bookmarklet?action=start", {
+      headers: {
+        authorization: `Bearer ${session.access_token}`
+      }
+    }).then((response) => response.json()),
+    fetch("/api/bookmarklet?action=refresh", {
+      headers: {
+        authorization: `Bearer ${session.access_token}`
+      }
+    }).then((response) => response.json())
   ]);
 
   if (!startBookmarklet.ok || !refreshBookmarklet.ok) {
@@ -114,9 +118,7 @@ async function renderSession(session) {
   elements.startWeekLink.href = startBookmarklet.bookmarklet;
   elements.bookmarkletLink.href = refreshBookmarklet.bookmarklet;
   setStatus(
-    refreshBookmarklet.mode === "import-token"
-      ? "Ready for SolPump import. Drag the updated bookmarks into Chrome once."
-      : "Ready for SolPump import. Bookmark links expire with the admin login."
+    "Ready for SolPump import. Bookmark links use the current admin session and should be refreshed after a new login."
   );
   await loadEntries();
 }

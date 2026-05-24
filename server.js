@@ -1,5 +1,4 @@
 import http from "node:http";
-import { timingSafeEqual } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -10,6 +9,7 @@ const publicDir = path.join(__dirname, "public");
 const port = Number(process.env.PORT || 3000);
 let browserIngest = null;
 const prizeSplit = [50, 25, 12.5, 6.25, 3.75, 1.25, 0.625, 0.625, 0, 0];
+const rateMap = new Map();
 
 await loadEnv();
 const solPumpHeaderFile = path.join(__dirname, ".solpump-headers.json");
@@ -31,8 +31,16 @@ const server = http.createServer(async (request, response) => {
   try {
     const url = new URL(request.url || "/", `http://${request.headers.host}`);
 
+    if (url.pathname.startsWith("/api/") && isRateLimited(request, url.pathname === "/api/leaderboard" ? 120 : 40)) {
+      sendJson(response, 429, {
+        ok: false,
+        error: "Too many requests"
+      }, request);
+      return;
+    }
+
     if (request.method === "OPTIONS") {
-      sendCors(response, 204);
+      sendCors(request, response, 204);
       return;
     }
 
@@ -77,7 +85,7 @@ const server = http.createServer(async (request, response) => {
     sendJson(response, 500, {
       ok: false,
       error: "Internal server error"
-    });
+    }, request);
   }
 });
 
@@ -162,13 +170,13 @@ async function receiveBrowserIngest(request, response) {
   const payload = requestBody.payload || requestBody;
   const leaderboard = normalizeSolPumpPayload(payload);
   const adminAuth = await resolveImportAuth(request);
-  const hasAdminCredential = Boolean(request.headers.authorization || request.headers["x-admin-import-token"]);
+  const hasAdminCredential = Boolean(request.headers.authorization);
 
   if (hasSupabaseConfig() && hasAdminCredential && !adminAuth.ok) {
     sendJson(response, adminAuth.status || 401, {
       ok: false,
       error: adminAuth.error || "Admin login required"
-    });
+    }, request);
     return;
   }
 
@@ -186,7 +194,7 @@ async function receiveBrowserIngest(request, response) {
       sendJson(response, saved.status || 500, {
         ok: false,
         error: saved.error || "Supabase import failed"
-      });
+      }, request);
       return;
     }
 
@@ -194,7 +202,7 @@ async function receiveBrowserIngest(request, response) {
       ok: true,
       source: "supabase",
       rows: leaderboard.length
-    });
+    }, request);
     return;
   }
 
@@ -206,7 +214,7 @@ async function receiveBrowserIngest(request, response) {
   sendJson(response, 200, {
     ok: true,
     rows: leaderboard.length
-  });
+  }, request);
 }
 
 async function receiveWeekStart(request, response) {
@@ -220,7 +228,7 @@ async function receiveWeekStart(request, response) {
     sendJson(response, adminAuth.status || 401, {
       ok: false,
       error: adminAuth.error || "Admin login required"
-    });
+    }, request);
     return;
   }
 
@@ -228,7 +236,7 @@ async function receiveWeekStart(request, response) {
     sendJson(response, 400, {
       ok: false,
       error: "Prize pot must be greater than 0 SOL"
-    });
+    }, request);
     return;
   }
 
@@ -246,7 +254,7 @@ async function receiveWeekStart(request, response) {
     sendJson(response, saved.status || 500, {
       ok: false,
       error: saved.error || "Could not start the week"
-    });
+    }, request);
     return;
   }
 
@@ -254,7 +262,7 @@ async function receiveWeekStart(request, response) {
     ok: true,
     rows: leaderboard.length,
     pot
-  });
+  }, request);
 }
 
 async function sendBookmarklet(request, response, requestUrl) {
@@ -264,8 +272,9 @@ async function sendBookmarklet(request, response, requestUrl) {
   const action = requestUrl.searchParams.get("action") === "start" ? "start" : "refresh";
   const targetPath = action === "start" ? "/api/start-week" : "/api/ingest";
   const ingestUrl = process.env.PUBLIC_BASE_URL ? `${process.env.PUBLIC_BASE_URL.replace(/\/$/, "")}${targetPath}` : `http://localhost:${port}${targetPath}`;
-  const sessionToken = requestUrl.searchParams.get("token") || "";
-  const admin = await requireAdmin(sessionToken ? `Bearer ${sessionToken}` : request.headers.authorization || "");
+  const authHeader = request.headers.authorization || "";
+  const sessionToken = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : "";
+  const admin = await requireAdmin(authHeader);
 
   if (!admin.ok) {
     sendJson(response, admin.status || 401, {
@@ -275,10 +284,7 @@ async function sendBookmarklet(request, response, requestUrl) {
     return;
   }
 
-  const importToken = process.env.ADMIN_IMPORT_TOKEN || "";
-  const authHeaderExpression = importToken
-    ? `{"content-type":"application/json","x-admin-import-token":${JSON.stringify(importToken)}}`
-    : `{"content-type":"application/json","authorization":"Bearer "+${JSON.stringify(sessionToken)}}`;
+  const authHeaderExpression = `{"content-type":"application/json","authorization":"Bearer "+${JSON.stringify(sessionToken)}}`;
   const potScript = action === "start" ? `const pot=Number(prompt("Prize pot in SOL","10"));if(!Number.isFinite(pot)||pot<=0){alert("Please enter a valid SOL pot.");return;}` : `const pot=null;`;
   const bodyExpression = action === "start" ? `{payload:j,pot}` : `{payload:j}`;
   const successText = action === "start" ? `"New leaderboard week started: "+o.rows+" affiliates, "+o.pot+" SOL pot"` : `"Leaderboard refreshed: "+o.rows+" affiliates"`;
@@ -286,7 +292,7 @@ async function sendBookmarklet(request, response, requestUrl) {
 
   sendJson(response, 200, {
     ok: true,
-    mode: importToken ? "import-token" : "session-token",
+    mode: "session-token",
     bookmarklet: `javascript:${encodeURIComponent(script)}`
   });
 }
@@ -391,32 +397,6 @@ async function requireAdmin(authHeader) {
 }
 
 async function resolveImportAuth(request) {
-  const importToken = request.headers["x-admin-import-token"];
-
-  if (importToken) {
-    if (!isValidImportToken(importToken)) {
-      return {
-        ok: false,
-        status: 403,
-        error: "Import token is invalid"
-      };
-    }
-
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return {
-        ok: false,
-        status: 500,
-        error: "SUPABASE_SERVICE_ROLE_KEY is missing for long-lived bookmark imports"
-      };
-    }
-
-    return {
-      ok: true,
-      trustedImport: true,
-      authHeader: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
-    };
-  }
-
   const authHeader = request.headers.authorization || "";
   if (!authHeader.startsWith("Bearer ")) {
     return {
@@ -432,19 +412,6 @@ async function resolveImportAuth(request) {
     trustedImport: false,
     authHeader
   };
-}
-
-function isValidImportToken(value) {
-  const expected = process.env.ADMIN_IMPORT_TOKEN || "";
-
-  if (!expected || !value) {
-    return false;
-  }
-
-  const actualBuffer = Buffer.from(String(value));
-  const expectedBuffer = Buffer.from(expected);
-
-  return actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer);
 }
 
 function buildSolPumpHeaders(endpoint, cookie) {
@@ -1359,25 +1326,88 @@ async function sendStatic(pathname, response) {
   response.end(content);
 }
 
-function sendJson(response, statusCode, payload) {
+function sendJson(response, statusCode, payload, request = null) {
   response.writeHead(statusCode, {
     "content-type": "application/json; charset=utf-8",
-    "access-control-allow-origin": "*",
+    ...corsHeaders(request),
     "access-control-allow-methods": "GET,POST,PATCH,DELETE,OPTIONS",
-    "access-control-allow-headers": "authorization,content-type,x-admin-import-token",
+    "access-control-allow-headers": "authorization,content-type",
     "cache-control": "no-store"
   });
   response.end(JSON.stringify(payload));
 }
 
-function sendCors(response, statusCode) {
+function sendCors(request, response, statusCode) {
   response.writeHead(statusCode, {
-    "access-control-allow-origin": "*",
+    ...corsHeaders(request),
     "access-control-allow-methods": "GET,POST,PATCH,DELETE,OPTIONS",
-    "access-control-allow-headers": "authorization,content-type,x-admin-import-token",
+    "access-control-allow-headers": "authorization,content-type",
     "cache-control": "no-store"
   });
   response.end();
+}
+
+function corsHeaders(request) {
+  const origin = request?.headers?.origin || "";
+  const allowedOrigins = allowedCorsOrigins();
+  const fallbackOrigin = allowedOrigins[0] || "http://localhost:3000";
+
+  if (!origin) {
+    return {
+      "access-control-allow-origin": fallbackOrigin,
+      vary: "Origin"
+    };
+  }
+
+  return {
+    "access-control-allow-origin": allowedOrigins.includes(origin) ? origin : fallbackOrigin,
+    vary: "Origin"
+  };
+}
+
+function allowedCorsOrigins() {
+  return [
+    process.env.PUBLIC_BASE_URL,
+    "https://solpump.io",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000"
+  ]
+    .filter(Boolean)
+    .map((origin) => origin.replace(/\/$/, ""));
+}
+
+function isRateLimited(request, maxPerMinute) {
+  const ip = clientIp(request);
+  const key = `${ip}:${request.url?.split("?")[0] || "/"}`;
+  const now = Date.now();
+  const entry = rateMap.get(key) || {
+    count: 0,
+    reset: now + 60_000
+  };
+
+  if (now > entry.reset) {
+    entry.count = 0;
+    entry.reset = now + 60_000;
+  }
+
+  entry.count += 1;
+  rateMap.set(key, entry);
+
+  if (rateMap.size > 2000) {
+    for (const [entryKey, value] of rateMap.entries()) {
+      if (now > value.reset) {
+        rateMap.delete(entryKey);
+      }
+    }
+  }
+
+  return entry.count > maxPerMinute;
+}
+
+function clientIp(request) {
+  return String(request.headers["x-forwarded-for"] || request.socket.remoteAddress || "unknown")
+    .split(",")[0]
+    .trim();
 }
 
 function readRequestBody(request) {

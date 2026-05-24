@@ -21,7 +21,6 @@ SUPABASE_URL=https://dein-projekt.supabase.co
 SUPABASE_ANON_KEY=dein-anon-key
 SUPABASE_SERVICE_ROLE_KEY=dein-service-role-key
 ADMIN_EMAILS=deine-admin-mail@example.com
-ADMIN_IMPORT_TOKEN=ein-langer-zufaelliger-import-key
 SOLPUMP_API_URL=https://your-solpump-api-url
 SOLPUMP_COOKIE=your-cookie
 ```
@@ -43,17 +42,11 @@ values ('your-admin-email@example.com')
 on conflict (email) do nothing;
 ```
 
-5. Set `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_EMAILS`, `ADMIN_IMPORT_TOKEN`, and `PUBLIC_BASE_URL` in `.env` or your hosting provider.
+5. Set `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_EMAILS`, and `PUBLIC_BASE_URL` in `.env` or your hosting provider.
 6. In Supabase, create a user for the admin email under `Authentication > Users`.
 7. Open the admin page: `http://localhost:3000/admin.html`
 
-The public page only reads from Supabase. Admin panel writes are only allowed for signed-in admins whose email exists in Supabase Auth and either `admin_users` or `ADMIN_EMAILS`. Bookmarklet imports use `ADMIN_IMPORT_TOKEN` plus the server-only `SUPABASE_SERVICE_ROLE_KEY`, so the refresh bookmark does not break when the Supabase browser login expires.
-
-Generate a strong `ADMIN_IMPORT_TOKEN` locally with:
-
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
+The public page only reads from Supabase. Admin panel writes are only allowed for signed-in admins whose email exists in Supabase Auth and either `admin_users` or `ADMIN_EMAILS`. Bookmarklet imports use the admin's short-lived Supabase session token.
 
 ## Weekly Leaderboard Flow
 
@@ -62,7 +55,7 @@ The leaderboard is weekly. Starting a new week stores the current SolPump affili
 Admin flow:
 
 1. Open `/admin.html` and sign in.
-2. Drag `Start New Week` and `Refresh Week` into the Chrome bookmarks bar. If you changed `ADMIN_IMPORT_TOKEN`, drag the buttons again.
+2. Drag `Start New Week` and `Refresh Week` into the Chrome bookmarks bar. After signing in again later, refresh these bookmarks from the admin panel.
 3. Open `https://solpump.io/affiliates`.
 4. Click `Start New Week` once and enter the prize pot in SOL.
 5. Later, click `Refresh Week` to update the leaderboard.
