@@ -82,7 +82,7 @@ async function sendLeaderboard(response) {
         ok: true,
         source: "supabase",
         updatedAt: supabaseResult.updatedAt,
-        leaderboard: supabaseResult.leaderboard
+        leaderboard: preparePublicLeaderboard(supabaseResult.leaderboard)
       });
       return;
     }
@@ -98,7 +98,7 @@ async function sendLeaderboard(response) {
       ok: true,
       source: "browser",
       updatedAt: browserIngest.updatedAt,
-      leaderboard: browserIngest.leaderboard
+      leaderboard: preparePublicLeaderboard(browserIngest.leaderboard)
     });
     return;
   }
@@ -108,7 +108,7 @@ async function sendLeaderboard(response) {
       ok: true,
       source: "demo",
       updatedAt: new Date().toISOString(),
-      leaderboard: demoLeaderboard
+      leaderboard: preparePublicLeaderboard(demoLeaderboard)
     });
     return;
   }
@@ -132,7 +132,7 @@ async function sendLeaderboard(response) {
     ok: true,
     source: "solpump",
     updatedAt: new Date().toISOString(),
-    leaderboard
+    leaderboard: preparePublicLeaderboard(leaderboard)
   });
 }
 
@@ -264,6 +264,25 @@ function addOptionalHeader(headers, name, value) {
   if (value) {
     headers[name] = value;
   }
+}
+
+function preparePublicLeaderboard(leaderboard) {
+  return leaderboard.slice(0, 10).map((entry, index) => ({
+    rank: index + 1,
+    name: censorName(entry.name),
+    wagered: entry.wagered,
+    avatar: entry.avatar
+  }));
+}
+
+function censorName(name) {
+  const value = String(name || "Affiliate");
+
+  if (value.length <= 4) {
+    return `${value.slice(0, 1)}${"*".repeat(Math.max(value.length - 1, 1))}`;
+  }
+
+  return `${value.slice(0, 2)}${"*".repeat(Math.max(value.length - 4, 3))}${value.slice(-2)}`;
 }
 
 function hasSupabaseConfig() {

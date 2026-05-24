@@ -38,8 +38,7 @@ body {
 
 .topbar,
 .hero,
-.section-heading,
-.summary-grid {
+.section-heading {
   display: flex;
   align-items: center;
 }
@@ -106,6 +105,10 @@ button:hover,
     url("https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1800&q=80")
       center / cover;
   overflow: hidden;
+}
+
+.compact-hero {
+  min-height: 280px;
 }
 
 .hero-copy {
@@ -176,39 +179,76 @@ h2 {
   background: var(--danger);
 }
 
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-  margin: 18px 0;
-}
-
-.summary-grid article,
-.leaderboard-section {
+.leaderboard-section,
+.podium-section {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(18, 23, 34, 0.88);
 }
 
-.summary-grid article {
-  padding: 18px;
-}
-
-.summary-grid span {
-  display: block;
-  margin-bottom: 8px;
-  color: var(--muted);
-  font-size: 0.85rem;
-  font-weight: 700;
-}
-
-.summary-grid strong {
-  font-size: clamp(1.35rem, 3vw, 2rem);
-  letter-spacing: 0;
+.podium-section {
+  margin: 18px 0;
+  padding: 22px;
 }
 
 .leaderboard-section {
   overflow: hidden;
+}
+
+.podium {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  gap: 14px;
+}
+
+.podium-card {
+  display: grid;
+  min-height: 190px;
+  align-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 22px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+  text-align: center;
+}
+
+.podium-rank-1 {
+  min-height: 235px;
+  border-color: rgba(247, 201, 72, 0.45);
+  background: linear-gradient(180deg, rgba(247, 201, 72, 0.14), rgba(255, 255, 255, 0.045));
+}
+
+.podium-rank-2 {
+  min-height: 205px;
+}
+
+.podium-rank-3 {
+  min-height: 180px;
+}
+
+.podium-medal {
+  color: var(--gold);
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.podium-avatar {
+  width: 56px;
+  height: 56px;
+  font-size: 1.1rem;
+}
+
+.podium-card strong {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.podium-card span:last-child {
+  color: var(--accent);
+  font-weight: 800;
 }
 
 .section-heading {
@@ -225,7 +265,7 @@ h2 {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 820px;
+  min-width: 580px;
 }
 
 th,
@@ -383,8 +423,19 @@ tbody tr:hover {
     padding: 34px 24px;
   }
 
-  .summary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .podium {
+    grid-template-columns: 1fr;
+  }
+
+  .podium-card,
+  .podium-rank-1,
+  .podium-rank-2,
+  .podium-rank-3 {
+    min-height: 160px;
+  }
+
+  .podium-rank-1 {
+    order: -1;
   }
 }
 
@@ -397,10 +448,6 @@ tbody tr:hover {
   .topbar {
     align-items: flex-start;
     flex-direction: column;
-  }
-
-  .summary-grid {
-    grid-template-columns: 1fr;
   }
 
   h1 {

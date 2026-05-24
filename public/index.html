@@ -24,11 +24,11 @@
         </a>
       </nav>
 
-      <section class="hero">
+      <section class="hero compact-hero">
         <div class="hero-copy">
           <p class="eyebrow">Affiliate Wager Race</p>
           <h1>LordpommesX2 Leaderboard</h1>
-          <p>Live SolPump affiliate standings for LordpommesX2, ranked by total wager.</p>
+          <p>Top 10 SolPump affiliates, ranked by wager.</p>
         </div>
 
         <div class="hero-panel" aria-label="Leaderboard status">
@@ -37,30 +37,17 @@
         </div>
       </section>
 
-      <section class="summary-grid" aria-label="Summary">
-        <article>
-          <span>Total Wagered</span>
-          <strong id="totalWager">-</strong>
-        </article>
-        <article>
-          <span>Affiliates</span>
-          <strong id="totalAffiliates">-</strong>
-        </article>
-        <article>
-          <span>Commission Generated</span>
-          <strong id="totalCommission">-</strong>
-        </article>
-        <article>
-          <span>Last Update</span>
-          <strong id="lastUpdate">-</strong>
-        </article>
+      <section class="podium-section" aria-label="Top 3 affiliates">
+        <div class="podium" id="podium">
+          <div class="empty-state">Loading podium...</div>
+        </div>
       </section>
 
       <section class="leaderboard-section">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Main Leaderboard</p>
-            <h2>Top Affiliates</h2>
+            <h2>Top 10 Affiliates</h2>
           </div>
           <button id="refreshButton" type="button">Refresh</button>
         </div>
@@ -72,14 +59,11 @@
                 <th>Rank</th>
                 <th>Affiliate</th>
                 <th>Wager</th>
-                <th>Commission Generated</th>
-                <th>First Seen</th>
-                <th>Last Seen</th>
               </tr>
             </thead>
             <tbody id="leaderboardBody">
               <tr>
-                <td colspan="6" class="empty-state">Loading leaderboard...</td>
+                <td colspan="3" class="empty-state">Loading leaderboard...</td>
               </tr>
             </tbody>
           </table>

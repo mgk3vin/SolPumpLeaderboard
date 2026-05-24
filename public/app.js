@@ -1,9 +1,6 @@
 const elements = {
   body: document.querySelector("#leaderboardBody"),
-  totalWager: document.querySelector("#totalWager"),
-  totalAffiliates: document.querySelector("#totalAffiliates"),
-  totalCommission: document.querySelector("#totalCommission"),
-  lastUpdate: document.querySelector("#lastUpdate"),
+  podium: document.querySelector("#podium"),
   statusDot: document.querySelector("#statusDot"),
   statusText: document.querySelector("#statusText"),
   refreshButton: document.querySelector("#refreshButton")
@@ -12,14 +9,6 @@ const elements = {
 const solFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 4,
   maximumFractionDigits: 4
-});
-
-const compactSolFormatter = new Intl.NumberFormat("en-US", {
-  maximumFractionDigits: 4
-});
-
-const numberFormatter = new Intl.NumberFormat("en-US", {
-  maximumFractionDigits: 0
 });
 
 elements.refreshButton.addEventListener("click", loadLeaderboard);
@@ -37,29 +26,46 @@ async function loadLeaderboard() {
       throw new Error(payload.error || "Leaderboard could not be loaded");
     }
 
-    renderLeaderboard(payload.leaderboard || []);
-    renderSummary(payload);
+    const rows = (payload.leaderboard || []).slice(0, 10);
+    renderPodium(rows.slice(0, 3));
+    renderLeaderboard(rows);
     setStatus(
       payload.source === "demo" ? "demo" : "live",
-      payload.source === "demo"
-        ? "Demo data active"
-        : payload.source === "browser"
-          ? "Loaded from browser import"
-          : payload.source === "supabase"
-            ? "Live from Supabase"
-            : "Live with SolPump"
+      payload.source === "demo" ? "Demo data active" : "Live leaderboard"
     );
   } catch (error) {
-    elements.body.innerHTML = `<tr><td colspan="6" class="empty-state">${escapeHtml(error.message)}</td></tr>`;
+    elements.podium.innerHTML = "";
+    elements.body.innerHTML = `<tr><td colspan="3" class="empty-state">${escapeHtml(error.message)}</td></tr>`;
     setStatus("error", "Connection failed");
   } finally {
     elements.refreshButton.disabled = false;
   }
 }
 
+function renderPodium(rows) {
+  if (!rows.length) {
+    elements.podium.innerHTML = '<div class="empty-state">No podium data yet.</div>';
+    return;
+  }
+
+  const ordered = [rows[1], rows[0], rows[2]].filter(Boolean);
+  elements.podium.innerHTML = ordered
+    .map(
+      (row) => `
+        <article class="podium-card podium-rank-${row.rank}">
+          <div class="podium-medal">#${row.rank}</div>
+          <span class="avatar podium-avatar">${renderAvatar(row)}</span>
+          <strong>${escapeHtml(row.name)}</strong>
+          <span>${formatSol(row.wagered)}</span>
+        </article>
+      `
+    )
+    .join("");
+}
+
 function renderLeaderboard(rows) {
   if (!rows.length) {
-    elements.body.innerHTML = '<tr><td colspan="6" class="empty-state">No affiliate data yet.</td></tr>';
+    elements.body.innerHTML = '<tr><td colspan="3" class="empty-state">No affiliate data yet.</td></tr>';
     return;
   }
 
@@ -75,24 +81,10 @@ function renderLeaderboard(rows) {
             </div>
           </td>
           <td>${formatSol(row.wagered)}</td>
-          <td class="positive">${formatSol(row.commissionGenerated ?? row.profit)}</td>
-          <td>${formatDateTime(row.firstSeen)}</td>
-          <td>${formatDateTime(row.lastSeen)}</td>
         </tr>
       `
     )
     .join("");
-}
-
-function renderSummary(payload) {
-  const rows = payload.leaderboard || [];
-  const totalWager = rows.reduce((sum, row) => sum + (row.wagered || 0), 0);
-  const totalCommission = rows.reduce((sum, row) => sum + (row.commissionGenerated ?? row.profit ?? 0), 0);
-
-  elements.totalWager.textContent = formatSol(totalWager, compactSolFormatter);
-  elements.totalAffiliates.textContent = numberFormatter.format(rows.length);
-  elements.totalCommission.textContent = formatSol(totalCommission, compactSolFormatter);
-  elements.lastUpdate.textContent = formatDateTime(payload.updatedAt);
 }
 
 function renderAvatar(row) {
@@ -100,32 +92,11 @@ function renderAvatar(row) {
     return `<img src="${escapeAttribute(row.avatar)}" alt="" loading="lazy" />`;
   }
 
-  return escapeHtml(
-    row.name
-      .split(/\s+/)
-      .map((part) => part[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase()
-  );
+  return escapeHtml(row.name.slice(0, 1).toUpperCase());
 }
 
-function formatSol(value, formatter = solFormatter) {
-  return `${formatter.format(Number(value || 0))} SOL`;
-}
-
-function formatDateTime(value) {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return escapeHtml(value);
-
-  return new Intl.DateTimeFormat("en-US", {
-    month: "2-digit",
-    day: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(date);
+function formatSol(value) {
+  return `${solFormatter.format(Number(value || 0))} SOL`;
 }
 
 function setStatus(type, text) {
