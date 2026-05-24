@@ -72,6 +72,17 @@ button,
   gap: 10px;
 }
 
+.icon-link {
+  gap: 8px;
+}
+
+.icon-link img {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  flex: 0 0 auto;
+}
+
 .brand-mark {
   display: grid;
   width: 38px;
@@ -114,7 +125,7 @@ button:hover,
   justify-content: space-between;
   gap: 24px;
   min-height: 250px;
-  padding: 40px 300px 40px 40px;
+  padding: 40px 310px 40px 40px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background:
@@ -218,9 +229,12 @@ h2 {
   text-transform: uppercase;
 }
 
-.weekly-offer span {
-  color: var(--accent);
-  filter: drop-shadow(0 6px 12px rgba(20, 241, 232, 0.24));
+.weekly-offer img,
+.pot-value img {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  filter: drop-shadow(0 8px 16px rgba(20, 241, 232, 0.2));
 }
 
 .play-now-button {
@@ -251,8 +265,7 @@ h2 {
 .profile-card {
   position: absolute;
   right: 54px;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 40px;
   z-index: 1;
   width: clamp(132px, 18vw, 190px);
   aspect-ratio: 1;
@@ -284,8 +297,8 @@ h2 {
 
 .hero-panel {
   position: absolute;
-  left: 40px;
-  bottom: 32px;
+  right: 54px;
+  bottom: 40px;
   z-index: 1;
   flex: 0 0 auto;
   gap: 10px;
@@ -296,6 +309,17 @@ h2 {
   backdrop-filter: blur(12px);
   color: var(--muted);
   font-weight: 700;
+}
+
+.pot-value {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 10px;
+}
+
+.pot-value img {
+  width: 30px;
+  height: 30px;
 }
 
 .status-dot {
@@ -458,6 +482,30 @@ h2 {
   border-color: rgba(20, 241, 232, 0.36);
   background: rgba(255, 255, 255, 0.065);
   box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
+}
+
+.podium-rank-1:hover {
+  border-color: rgba(247, 209, 84, 0.68);
+  background: linear-gradient(180deg, rgba(247, 201, 72, 0.18), rgba(255, 255, 255, 0.06));
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.22),
+    0 0 30px rgba(247, 209, 84, 0.14);
+}
+
+.podium-rank-2:hover {
+  border-color: rgba(215, 221, 232, 0.64);
+  background: linear-gradient(180deg, rgba(215, 221, 232, 0.15), rgba(255, 255, 255, 0.06));
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.22),
+    0 0 30px rgba(215, 221, 232, 0.12);
+}
+
+.podium-rank-3:hover {
+  border-color: rgba(208, 146, 88, 0.64);
+  background: linear-gradient(180deg, rgba(201, 137, 75, 0.17), rgba(255, 255, 255, 0.06));
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.22),
+    0 0 30px rgba(208, 146, 88, 0.13);
 }
 
 .podium-rank-1 {
@@ -728,13 +776,13 @@ tbody tr:hover {
     position: relative;
     right: auto;
     top: auto;
-    transform: none;
     width: 132px;
   }
 
   .hero-panel {
     position: relative;
     left: auto;
+    right: auto;
     bottom: auto;
   }
 
