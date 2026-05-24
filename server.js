@@ -716,6 +716,40 @@ async function createAdminEntry(authHeader, body) {
   const maxRank = entriesResult.entries.reduce((highest, entry) => Math.max(highest, numberFrom(entry.storedRank)), 0);
   const now = new Date().toISOString();
   const writeAuthHeader = supabaseWriteAuthHeader(authHeader);
+  const row = {
+    rank: maxRank + 1,
+    name,
+    wagered,
+    baseline_wager: 0,
+    current_wager: wagered,
+    deposits: 0,
+    bets: 0,
+    profit: 0,
+    commission_generated: 0,
+    first_seen: null,
+    last_seen: null,
+    blocked: false,
+    avatar: null,
+    updated_at: now
+  };
+  const insertResult = await insertLeaderboardRows(authHeader, row, writeAuthHeader);
+
+  if (!insertResult.ok) {
+    return {
+      ok: false,
+      status: insertResult.status,
+      error: `Could not create user${insertResult.error ? `: ${insertResult.error}` : ""}`
+    };
+  }
+
+  const refreshed = await listAdminEntries(authHeader);
+  return {
+    ...refreshed,
+    createdName: name
+  };
+}
+
+async function insertLeaderboardRows(readAuthHeader, rows, writeAuthHeader = readAuthHeader) {
   const inserted = await fetch(`${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries`, {
     method: "POST",
     headers: {
@@ -724,37 +758,46 @@ async function createAdminEntry(authHeader, body) {
       "content-type": "application/json",
       prefer: "return=minimal"
     },
-    body: JSON.stringify({
-      rank: maxRank + 1,
-      name,
-      wagered,
-      baseline_wager: 0,
-      current_wager: wagered,
-      deposits: 0,
-      bets: 0,
-      profit: 0,
-      commission_generated: 0,
-      first_seen: null,
-      last_seen: null,
-      blocked: false,
-      avatar: null,
-      updated_at: now
-    })
+    body: JSON.stringify(rows)
   });
 
-  if (!inserted.ok) {
-    const details = await readSupabaseError(inserted);
+  if (inserted.ok) {
     return {
-      ok: false,
-      status: inserted.status,
-      error: `Could not create user${details ? `: ${details}` : ""}`
+      ok: true
     };
   }
 
-  const refreshed = await listAdminEntries(authHeader);
+  const details = await readSupabaseError(inserted);
+  if (!isMissingBlockedColumn(details)) {
+    return {
+      ok: false,
+      status: inserted.status,
+      error: details
+    };
+  }
+
+  const fallbackRows = stripBlocked(rows);
+  const fallback = await fetch(`${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries`, {
+    method: "POST",
+    headers: {
+      apikey: process.env.SUPABASE_ANON_KEY,
+      authorization: writeAuthHeader,
+      "content-type": "application/json",
+      prefer: "return=minimal"
+    },
+    body: JSON.stringify(fallbackRows)
+  });
+
+  if (!fallback.ok) {
+    return {
+      ok: false,
+      status: fallback.status,
+      error: await readSupabaseError(fallback)
+    };
+  }
+
   return {
-    ...refreshed,
-    createdName: name
+    ok: true
   };
 }
 
@@ -797,6 +840,13 @@ async function updateAdminEntry(authHeader, body) {
   }
 
   const writeAuthHeader = supabaseWriteAuthHeader(authHeader);
+  const updatePayload = {
+    name: nextName,
+    wagered,
+    current_wager: numberFrom(currentEntry.baselineWager) + wagered,
+    blocked,
+    updated_at: new Date().toISOString()
+  };
   const updated = await fetch(`${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries?name=eq.${encodeURIComponent(name)}`, {
     method: "PATCH",
     headers: {
@@ -805,22 +855,38 @@ async function updateAdminEntry(authHeader, body) {
       "content-type": "application/json",
       prefer: "return=minimal"
     },
-    body: JSON.stringify({
-      name: nextName,
-      wagered,
-      current_wager: numberFrom(currentEntry.baselineWager) + wagered,
-      blocked,
-      updated_at: new Date().toISOString()
-    })
+    body: JSON.stringify(updatePayload)
   });
 
   if (!updated.ok) {
     const details = await readSupabaseError(updated);
-    return {
-      ok: false,
-      status: updated.status,
-      error: `Could not update user${details ? `: ${details}` : ""}`
-    };
+    if (isMissingBlockedColumn(details)) {
+      const fallback = await fetch(`${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries?name=eq.${encodeURIComponent(name)}`, {
+        method: "PATCH",
+        headers: {
+          apikey: process.env.SUPABASE_ANON_KEY,
+          authorization: writeAuthHeader,
+          "content-type": "application/json",
+          prefer: "return=minimal"
+        },
+        body: JSON.stringify(stripBlocked(updatePayload))
+      });
+
+      if (!fallback.ok) {
+        const fallbackDetails = await readSupabaseError(fallback);
+        return {
+          ok: false,
+          status: fallback.status,
+          error: `Could not update user${fallbackDetails ? `: ${fallbackDetails}` : ""}`
+        };
+      }
+    } else {
+      return {
+        ok: false,
+        status: updated.status,
+        error: `Could not update user${details ? `: ${details}` : ""}`
+      };
+    }
   }
 
   const refreshed = await listAdminEntries(authHeader);
@@ -912,22 +978,13 @@ async function replaceAdminEntries(authHeader, entries) {
     };
   }
 
-  const inserted = await fetch(`${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries`, {
-    method: "POST",
-    headers: {
-      apikey: process.env.SUPABASE_ANON_KEY,
-      authorization: authHeader,
-      "content-type": "application/json",
-      prefer: "return=minimal"
-    },
-    body: JSON.stringify(rows)
-  });
+  const insertResult = await insertLeaderboardRows(authHeader, rows);
 
-  if (!inserted.ok) {
+  if (!insertResult.ok) {
     return {
       ok: false,
-      status: inserted.status,
-      error: "Could not save leaderboard"
+      status: insertResult.status,
+      error: `Could not save leaderboard${insertResult.error ? `: ${insertResult.error}` : ""}`
     };
   }
 
@@ -936,6 +993,21 @@ async function replaceAdminEntries(authHeader, entries) {
 
 function supabaseWriteAuthHeader(authHeader) {
   return process.env.SUPABASE_SERVICE_ROLE_KEY ? `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` : authHeader;
+}
+
+function stripBlocked(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => stripBlocked(item));
+  }
+
+  const copy = { ...value };
+  delete copy.blocked;
+  return copy;
+}
+
+function isMissingBlockedColumn(message) {
+  const value = String(message || "").toLowerCase();
+  return value.includes("blocked") && (value.includes("schema cache") || value.includes("column"));
 }
 
 async function readSupabaseError(response) {
@@ -1038,22 +1110,13 @@ async function saveSupabaseLeaderboard(leaderboard, authHeader, options = { mode
       rank: index + 1
     }));
 
-  const inserted = await fetch(`${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries`, {
-    method: "POST",
-    headers: {
-      apikey: process.env.SUPABASE_ANON_KEY,
-      authorization: authHeader,
-      "content-type": "application/json",
-      prefer: "return=minimal"
-    },
-    body: JSON.stringify(rows)
-  });
+  const insertResult = await insertLeaderboardRows(authHeader, rows);
 
-  if (!inserted.ok) {
+  if (!insertResult.ok) {
     return {
       ok: false,
-      status: inserted.status,
-      error: "Could not save the new leaderboard"
+      status: insertResult.status,
+      error: `Could not save the new leaderboard${insertResult.error ? `: ${insertResult.error}` : ""}`
     };
   }
 
