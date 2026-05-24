@@ -12,6 +12,7 @@ const elements = {
   importPanel: document.querySelector("#importPanel"),
   managePanel: document.querySelector("#managePanel"),
   createUserForm: document.querySelector("#createUserForm"),
+  createUserButton: document.querySelector("#createUserForm button[type='submit']"),
   newUserName: document.querySelector("#newUserName"),
   newUserWager: document.querySelector("#newUserWager"),
   adminEntriesBody: document.querySelector("#adminEntriesBody"),
@@ -145,7 +146,7 @@ async function loadEntries() {
   renderEntries(payload.entries || []);
 }
 
-function renderEntries(entries) {
+function renderEntries(entries, highlightName = "") {
   if (!entries.length) {
     elements.adminEntriesBody.innerHTML = '<tr><td colspan="5" class="empty-state">No users yet.</td></tr>';
     return;
@@ -154,7 +155,7 @@ function renderEntries(entries) {
   elements.adminEntriesBody.innerHTML = entries
     .map(
       (entry) => `
-        <tr data-name="${escapeAttribute(entry.name)}" data-blocked="${entry.blocked ? "true" : "false"}">
+        <tr class="${entry.name === highlightName ? "entry-highlight" : ""}" data-name="${escapeAttribute(entry.name)}" data-blocked="${entry.blocked ? "true" : "false"}">
           <td><span class="admin-rank">#${entry.rank}</span></td>
           <td>
             <input class="entry-name" type="text" value="${escapeAttribute(entry.name)}" />
@@ -182,11 +183,16 @@ function renderEntries(entries) {
 
 async function createUser(event) {
   event.preventDefault();
+  const userName = elements.newUserName.value.trim();
+  const originalText = elements.createUserButton.textContent;
+
+  elements.createUserButton.disabled = true;
+  elements.createUserButton.textContent = "Creating...";
 
   const payload = await adminRequest("/api/admin/entries", {
     method: "POST",
     body: {
-      name: elements.newUserName.value,
+      name: userName,
       wagered: elements.newUserWager.value,
       blocked: false
     }
@@ -194,12 +200,21 @@ async function createUser(event) {
 
   if (!payload.ok) {
     setStatus(payload.error);
+    elements.createUserButton.disabled = false;
+    elements.createUserButton.textContent = originalText;
     return;
   }
 
   elements.createUserForm.reset();
-  setStatus("User created.");
-  renderEntries(payload.entries || []);
+  elements.createUserButton.textContent = "Created";
+  setStatus(`${payload.createdName || userName} created and added to the leaderboard.`);
+  renderEntries(payload.entries || [], payload.createdName || userName);
+
+  window.setTimeout(() => {
+    elements.createUserButton.disabled = false;
+    elements.createUserButton.textContent = originalText;
+    elements.adminEntriesBody.querySelector(".entry-highlight")?.classList.remove("entry-highlight");
+  }, 1200);
 }
 
 async function handleEntryAction(event) {
@@ -210,6 +225,8 @@ async function handleEntryAction(event) {
   const name = row.dataset.name;
 
   if (button.dataset.action === "delete") {
+    button.disabled = true;
+    button.textContent = "Deleting...";
     const payload = await adminRequest("/api/admin/entries", {
       method: "DELETE",
       body: { name }
@@ -227,6 +244,9 @@ async function handleEntryAction(event) {
 
   const nextBlocked =
     button.dataset.action === "toggle-block" ? button.dataset.blocked !== "true" : row.dataset.blocked === "true";
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = button.dataset.action === "toggle-block" ? "Updating..." : "Saving...";
 
   const payload = await adminRequest("/api/admin/entries", {
     method: "PATCH",
@@ -240,11 +260,13 @@ async function handleEntryAction(event) {
 
   if (!payload.ok) {
     setStatus(payload.error);
+    button.disabled = false;
+    button.textContent = originalText;
     return;
   }
 
   setStatus(button.dataset.action === "toggle-block" ? "User status updated." : "User updated.");
-  renderEntries(payload.entries || []);
+  renderEntries(payload.entries || [], payload.updatedName || row.querySelector(".entry-name").value);
 }
 
 async function adminRequest(url, options = {}) {

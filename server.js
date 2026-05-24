@@ -625,7 +625,7 @@ async function readSupabaseWeek() {
 }
 
 function fetchSupabaseLeaderboard(select) {
-  return fetch(`${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries?select=${select}&order=rank.asc`, {
+  return fetch(`${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries?select=${select}&order=wagered.desc`, {
     headers: {
       apikey: process.env.SUPABASE_ANON_KEY,
       authorization: `Bearer ${process.env.SUPABASE_ANON_KEY}`
@@ -636,7 +636,7 @@ function fetchSupabaseLeaderboard(select) {
 async function listAdminEntries(authHeader) {
   try {
     let response = await fetch(
-      `${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries?select=rank,name,wagered,baseline_wager,current_wager,blocked,avatar,updated_at&order=rank.asc`,
+      `${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries?select=rank,name,wagered,baseline_wager,current_wager,blocked,avatar,updated_at&order=wagered.desc`,
       {
         headers: {
           apikey: process.env.SUPABASE_ANON_KEY,
@@ -647,7 +647,7 @@ async function listAdminEntries(authHeader) {
 
     if (response.status === 400) {
       response = await fetch(
-        `${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries?select=rank,name,wagered,avatar,updated_at&order=rank.asc`,
+        `${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries?select=rank,name,wagered,avatar,updated_at&order=wagered.desc`,
         {
           headers: {
             apikey: process.env.SUPABASE_ANON_KEY,
@@ -669,8 +669,9 @@ async function listAdminEntries(authHeader) {
 
     return {
       ok: true,
-      entries: entries.map((entry) => ({
-        rank: numberFrom(entry.rank),
+      entries: entries.map((entry, index) => ({
+        rank: index + 1,
+        storedRank: numberFrom(entry.rank),
         name: entry.name,
         wagered: solAmountFrom(entry.wagered),
         baselineWager: solAmountFrom(entry.baseline_wager ?? 0),
@@ -704,19 +705,55 @@ async function createAdminEntry(authHeader, body) {
     };
   }
 
-  const rows = [
-    ...entriesResult.entries,
-    {
+  if (entriesResult.entries.some((entry) => entry.name.toLowerCase() === name.toLowerCase())) {
+    return {
+      ok: false,
+      status: 409,
+      error: "A user with this name already exists"
+    };
+  }
+
+  const maxRank = entriesResult.entries.reduce((highest, entry) => Math.max(highest, numberFrom(entry.storedRank)), 0);
+  const now = new Date().toISOString();
+  const inserted = await fetch(`${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries`, {
+    method: "POST",
+    headers: {
+      apikey: process.env.SUPABASE_ANON_KEY,
+      authorization: authHeader,
+      "content-type": "application/json",
+      prefer: "return=minimal"
+    },
+    body: JSON.stringify({
+      rank: maxRank + 1,
       name,
       wagered,
-      baselineWager: 0,
-      currentWager: wagered,
+      baseline_wager: 0,
+      current_wager: wagered,
+      deposits: 0,
+      bets: 0,
+      profit: 0,
+      commission_generated: 0,
+      first_seen: null,
+      last_seen: null,
       blocked: false,
-      avatar: null
-    }
-  ];
+      avatar: null,
+      updated_at: now
+    })
+  });
 
-  return replaceAdminEntries(authHeader, rows);
+  if (!inserted.ok) {
+    return {
+      ok: false,
+      status: inserted.status,
+      error: "Could not create user"
+    };
+  }
+
+  const refreshed = await listAdminEntries(authHeader);
+  return {
+    ...refreshed,
+    createdName: name
+  };
 }
 
 async function updateAdminEntry(authHeader, body) {
@@ -736,19 +773,57 @@ async function updateAdminEntry(authHeader, body) {
     };
   }
 
-  const rows = entriesResult.entries.map((entry) =>
-    entry.name === name
-      ? {
-          ...entry,
-          name: nextName,
-          wagered,
-          currentWager: entry.baselineWager + wagered,
-          blocked
-        }
-      : entry
-  );
+  const currentEntry = entriesResult.entries.find((entry) => entry.name === name);
 
-  return replaceAdminEntries(authHeader, rows);
+  if (!currentEntry) {
+    return {
+      ok: false,
+      status: 404,
+      error: "User was not found"
+    };
+  }
+
+  if (
+    nextName.toLowerCase() !== name.toLowerCase() &&
+    entriesResult.entries.some((entry) => entry.name.toLowerCase() === nextName.toLowerCase())
+  ) {
+    return {
+      ok: false,
+      status: 409,
+      error: "A user with this name already exists"
+    };
+  }
+
+  const updated = await fetch(`${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries?name=eq.${encodeURIComponent(name)}`, {
+    method: "PATCH",
+    headers: {
+      apikey: process.env.SUPABASE_ANON_KEY,
+      authorization: authHeader,
+      "content-type": "application/json",
+      prefer: "return=minimal"
+    },
+    body: JSON.stringify({
+      name: nextName,
+      wagered,
+      current_wager: numberFrom(currentEntry.baselineWager) + wagered,
+      blocked,
+      updated_at: new Date().toISOString()
+    })
+  });
+
+  if (!updated.ok) {
+    return {
+      ok: false,
+      status: updated.status,
+      error: "Could not update user"
+    }
+  }
+
+  const refreshed = await listAdminEntries(authHeader);
+  return {
+    ...refreshed,
+    updatedName: nextName
+  };
 }
 
 async function deleteAdminEntry(authHeader, body) {
@@ -756,9 +831,32 @@ async function deleteAdminEntry(authHeader, body) {
   if (!entriesResult.ok) return entriesResult;
 
   const name = String(body.name || "").trim();
-  const rows = entriesResult.entries.filter((entry) => entry.name !== name);
 
-  return replaceAdminEntries(authHeader, rows);
+  if (!name) {
+    return {
+      ok: false,
+      status: 400,
+      error: "Name is required"
+    };
+  }
+
+  const deleted = await fetch(`${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries?name=eq.${encodeURIComponent(name)}`, {
+    method: "DELETE",
+    headers: {
+      apikey: process.env.SUPABASE_ANON_KEY,
+      authorization: authHeader
+    }
+  });
+
+  if (!deleted.ok) {
+    return {
+      ok: false,
+      status: deleted.status,
+      error: "Could not delete user"
+    };
+  }
+
+  return listAdminEntries(authHeader);
 }
 
 async function replaceAdminEntries(authHeader, entries) {
