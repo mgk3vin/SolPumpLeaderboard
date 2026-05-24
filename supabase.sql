@@ -10,6 +10,7 @@ create table if not exists public.leaderboard_entries (
   commission_generated numeric not null default 0,
   first_seen timestamptz,
   last_seen timestamptz,
+  blocked boolean not null default false,
   avatar text,
   updated_at timestamptz not null default now()
 );
@@ -28,6 +29,9 @@ add column if not exists first_seen timestamptz;
 
 alter table public.leaderboard_entries
 add column if not exists last_seen timestamptz;
+
+alter table public.leaderboard_entries
+add column if not exists blocked boolean not null default false;
 
 create table if not exists public.admin_users (
   email text primary key

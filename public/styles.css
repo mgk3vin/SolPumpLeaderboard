@@ -704,7 +704,7 @@ tbody tr:hover {
 .admin-box {
   display: grid;
   gap: 12px;
-  max-width: 760px;
+  max-width: 100%;
 }
 
 .admin-box label,
@@ -742,6 +742,184 @@ tbody tr:hover {
   gap: 10px;
 }
 
+.admin-tabs {
+  display: inline-flex;
+  width: fit-content;
+  gap: 6px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.admin-tab {
+  min-height: 34px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+
+.admin-tab.active {
+  border-color: rgba(20, 241, 232, 0.42);
+  background: rgba(20, 241, 232, 0.12);
+  color: var(--text);
+}
+
+.admin-tool-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.admin-panel-intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(20, 241, 232, 0.18);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(20, 241, 232, 0.08), rgba(153, 69, 255, 0.08)),
+    rgba(255, 255, 255, 0.035);
+}
+
+.admin-panel-intro strong {
+  display: block;
+  max-width: 720px;
+  margin-top: 4px;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.create-user-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(160px, 0.6fr) auto;
+  gap: 12px;
+  align-items: end;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.create-user-form label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.create-user-form input,
+.admin-table input {
+  min-height: 40px;
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(3, 6, 18, 0.62);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  padding: 0 12px;
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(3, 6, 18, 0.42);
+}
+
+.admin-table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.admin-table tbody tr {
+  transition:
+    background-color 180ms ease,
+    transform 180ms ease;
+}
+
+.admin-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.admin-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.admin-table th {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.admin-rank {
+  display: inline-grid;
+  min-width: 44px;
+  min-height: 32px;
+  place-items: center;
+  border: 1px solid rgba(20, 241, 232, 0.18);
+  border-radius: 8px;
+  background: rgba(20, 241, 232, 0.08);
+  color: var(--gold);
+  font-weight: 950;
+}
+
+.entry-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.entry-actions button {
+  min-height: 34px;
+  padding: 0 11px;
+  font-size: 0.84rem;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 76px;
+  min-height: 30px;
+  border: 1px solid rgba(39, 255, 136, 0.3);
+  border-radius: 999px;
+  background: rgba(39, 255, 136, 0.1);
+  color: var(--green);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.status-pill.blocked {
+  border-color: rgba(255, 107, 107, 0.35);
+  background: rgba(255, 107, 107, 0.11);
+  color: #ff8d8d;
+}
+
+.danger-button {
+  border-color: rgba(255, 107, 107, 0.38);
+  background: rgba(255, 107, 107, 0.1);
+}
+
+.danger-button:hover {
+  border-color: rgba(255, 107, 107, 0.72);
+  background: rgba(255, 107, 107, 0.18);
+}
+
 .admin-box p,
 .admin-status {
   max-width: 640px;
@@ -756,6 +934,10 @@ tbody tr:hover {
 
 @media (max-width: 640px) {
   .admin-row {
+    grid-template-columns: 1fr;
+  }
+
+  .create-user-form {
     grid-template-columns: 1fr;
   }
 }

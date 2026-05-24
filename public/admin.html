@@ -44,6 +44,12 @@
           <div id="adminPanel" class="admin-box" hidden>
             <span class="admin-label">Signed in as</span>
             <strong id="adminEmail">-</strong>
+            <div class="admin-tabs" role="tablist" aria-label="Admin tools">
+              <button class="admin-tab active" type="button" data-panel="importPanel">Imports</button>
+              <button class="admin-tab" type="button" data-panel="managePanel">Manage Users</button>
+            </div>
+
+            <div id="importPanel" class="admin-tool-panel">
             <div class="admin-actions">
               <a id="startWeekLink" class="kick-link admin-bookmarklet" href="#">Start New Week</a>
               <a id="bookmarkletLink" class="kick-link admin-bookmarklet" href="#">Refresh Week</a>
@@ -56,6 +62,45 @@
               Affiliates and click the bookmark there. The bookmark must run on SolPump, not on this
               admin page.
             </p>
+            </div>
+
+            <div id="managePanel" class="admin-tool-panel" hidden>
+              <div class="admin-panel-intro">
+                <div>
+                  <span class="admin-label">Testing tools</span>
+                  <strong>Edit weekly wager values, create test users, or hide blocked users from the public leaderboard.</strong>
+                </div>
+              </div>
+              <form id="createUserForm" class="create-user-form">
+                <label>
+                  Affiliate name
+                  <input id="newUserName" type="text" autocomplete="off" placeholder="Ta*****28" required />
+                </label>
+                <label>
+                  Wager
+                  <input id="newUserWager" type="number" min="0" step="0.0001" placeholder="0" required />
+                </label>
+                <button type="submit">Create User</button>
+              </form>
+              <div class="admin-table-wrap">
+                <table class="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th>Name</th>
+                      <th>Wager</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="adminEntriesBody">
+                    <tr>
+                      <td colspan="5" class="empty-state">Sign in to load users.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
 

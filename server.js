@@ -65,6 +65,11 @@ const server = http.createServer(async (request, response) => {
       return;
     }
 
+    if (url.pathname === "/api/admin/entries") {
+      await handleAdminEntries(request, response);
+      return;
+    }
+
     await sendStatic(url.pathname, response);
   } catch (error) {
     console.error(error);
@@ -281,6 +286,76 @@ async function sendAdminStatus(request, response) {
   });
 }
 
+async function handleAdminEntries(request, response) {
+  const authHeader = request.headers.authorization || "";
+  const admin = await requireAdmin(authHeader);
+
+  if (!admin.ok) {
+    sendJson(response, admin.status, {
+      ok: false,
+      error: admin.error
+    });
+    return;
+  }
+
+  if (request.method === "GET") {
+    const result = await listAdminEntries(authHeader);
+    sendJson(response, result.status || 200, result);
+    return;
+  }
+
+  if (request.method === "POST") {
+    const body = JSON.parse(await readRequestBody(request));
+    const result = await createAdminEntry(authHeader, body);
+    sendJson(response, result.status || 200, result);
+    return;
+  }
+
+  if (request.method === "PATCH") {
+    const body = JSON.parse(await readRequestBody(request));
+    const result = await updateAdminEntry(authHeader, body);
+    sendJson(response, result.status || 200, result);
+    return;
+  }
+
+  if (request.method === "DELETE") {
+    const body = JSON.parse(await readRequestBody(request));
+    const result = await deleteAdminEntry(authHeader, body);
+    sendJson(response, result.status || 200, result);
+    return;
+  }
+
+  sendJson(response, 405, {
+    ok: false,
+    error: "Method not allowed"
+  });
+}
+
+async function requireAdmin(authHeader) {
+  if (!hasSupabaseConfig() || !authHeader.startsWith("Bearer ")) {
+    return {
+      ok: false,
+      status: 401,
+      error: "Admin login required"
+    };
+  }
+
+  const user = await readSupabaseUser(authHeader);
+
+  if (!user.ok || !parseAdminEmails().includes(user.email.toLowerCase())) {
+    return {
+      ok: false,
+      status: 403,
+      error: "This email is not enabled as an admin"
+    };
+  }
+
+  return {
+    ok: true,
+    email: user.email
+  };
+}
+
 function buildSolPumpHeaders(endpoint, cookie) {
   const headers = {
     accept: "application/json, text/plain, */*",
@@ -332,13 +407,16 @@ function addOptionalHeader(headers, name, value) {
 }
 
 function preparePublicLeaderboard(leaderboard, week = defaultWeek()) {
-  return leaderboard.slice(0, 10).map((entry, index) => ({
-    rank: index + 1,
-    name: censorName(entry.name),
-    wagered: entry.wagered,
-    prize: calculatePrize(index + 1, week.pot),
-    avatar: entry.avatar
-  }));
+  return leaderboard
+    .filter((entry) => !entry.blocked)
+    .slice(0, 10)
+    .map((entry, index) => ({
+      rank: index + 1,
+      name: censorName(entry.name),
+      wagered: entry.wagered,
+      prize: calculatePrize(index + 1, week.pot),
+      avatar: entry.avatar
+    }));
 }
 
 function calculatePrize(rank, pot) {
@@ -381,7 +459,7 @@ function parseAdminEmails() {
 async function readSupabaseLeaderboard() {
   try {
     let response = await fetchSupabaseLeaderboard(
-      "rank,name,wagered,deposits,bets,profit,commission_generated,first_seen,last_seen,avatar,updated_at"
+      "rank,name,wagered,deposits,bets,profit,commission_generated,first_seen,last_seen,blocked,avatar,updated_at"
     );
 
     if (response.status === 400) {
@@ -407,6 +485,7 @@ async function readSupabaseLeaderboard() {
       commissionGenerated: solAmountFrom(row.commission_generated ?? row.commissionGenerated ?? row.profit),
       firstSeen: row.first_seen ?? row.firstSeen ?? null,
       lastSeen: row.last_seen ?? row.lastSeen ?? null,
+      blocked: Boolean(row.blocked),
       avatar: row.avatar
     }));
 
@@ -463,6 +542,203 @@ function fetchSupabaseLeaderboard(select) {
   });
 }
 
+async function listAdminEntries(authHeader) {
+  try {
+    let response = await fetch(
+      `${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries?select=rank,name,wagered,baseline_wager,current_wager,blocked,avatar,updated_at&order=rank.asc`,
+      {
+        headers: {
+          apikey: process.env.SUPABASE_ANON_KEY,
+          authorization: authHeader
+        }
+      }
+    );
+
+    if (response.status === 400) {
+      response = await fetch(
+        `${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries?select=rank,name,wagered,avatar,updated_at&order=rank.asc`,
+        {
+          headers: {
+            apikey: process.env.SUPABASE_ANON_KEY,
+            authorization: authHeader
+          }
+        }
+      );
+    }
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: response.status,
+        error: "Could not load leaderboard entries"
+      };
+    }
+
+    const entries = await response.json();
+
+    return {
+      ok: true,
+      entries: entries.map((entry) => ({
+        rank: numberFrom(entry.rank),
+        name: entry.name,
+        wagered: solAmountFrom(entry.wagered),
+        baselineWager: solAmountFrom(entry.baseline_wager ?? 0),
+        currentWager: solAmountFrom(entry.current_wager ?? entry.wagered),
+        blocked: Boolean(entry.blocked),
+        avatar: entry.avatar,
+        updatedAt: entry.updated_at
+      }))
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 500,
+      error: error.message
+    };
+  }
+}
+
+async function createAdminEntry(authHeader, body) {
+  const entriesResult = await listAdminEntries(authHeader);
+  if (!entriesResult.ok) return entriesResult;
+
+  const name = String(body.name || "").trim();
+  const wagered = numberFrom(body.wagered);
+
+  if (!name) {
+    return {
+      ok: false,
+      status: 400,
+      error: "Name is required"
+    };
+  }
+
+  const rows = [
+    ...entriesResult.entries,
+    {
+      name,
+      wagered,
+      baselineWager: 0,
+      currentWager: wagered,
+      blocked: false,
+      avatar: null
+    }
+  ];
+
+  return replaceAdminEntries(authHeader, rows);
+}
+
+async function updateAdminEntry(authHeader, body) {
+  const entriesResult = await listAdminEntries(authHeader);
+  if (!entriesResult.ok) return entriesResult;
+
+  const name = String(body.name || "").trim();
+  const nextName = String(body.nextName || name).trim();
+  const wagered = numberFrom(body.wagered);
+  const blocked = Boolean(body.blocked);
+
+  if (!name || !nextName) {
+    return {
+      ok: false,
+      status: 400,
+      error: "Name is required"
+    };
+  }
+
+  const rows = entriesResult.entries.map((entry) =>
+    entry.name === name
+      ? {
+          ...entry,
+          name: nextName,
+          wagered,
+          currentWager: entry.baselineWager + wagered,
+          blocked
+        }
+      : entry
+  );
+
+  return replaceAdminEntries(authHeader, rows);
+}
+
+async function deleteAdminEntry(authHeader, body) {
+  const entriesResult = await listAdminEntries(authHeader);
+  if (!entriesResult.ok) return entriesResult;
+
+  const name = String(body.name || "").trim();
+  const rows = entriesResult.entries.filter((entry) => entry.name !== name);
+
+  return replaceAdminEntries(authHeader, rows);
+}
+
+async function replaceAdminEntries(authHeader, entries) {
+  const cleared = await fetch(`${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries?rank=gte.0`, {
+    method: "DELETE",
+    headers: {
+      apikey: process.env.SUPABASE_ANON_KEY,
+      authorization: authHeader
+    }
+  });
+
+  if (!cleared.ok) {
+    return {
+      ok: false,
+      status: cleared.status,
+      error: "Could not update leaderboard"
+    };
+  }
+
+  const now = new Date().toISOString();
+  const rows = entries
+    .map((entry) => ({
+      name: entry.name,
+      wagered: numberFrom(entry.wagered),
+      baseline_wager: numberFrom(entry.baselineWager),
+      current_wager: numberFrom(entry.currentWager ?? entry.wagered),
+      deposits: 0,
+      bets: 0,
+      profit: 0,
+      commission_generated: 0,
+      first_seen: null,
+      last_seen: null,
+      blocked: Boolean(entry.blocked),
+      avatar: entry.avatar || null,
+      updated_at: now
+    }))
+    .sort((a, b) => b.wagered - a.wagered)
+    .map((entry, index) => ({
+      ...entry,
+      rank: index + 1
+    }));
+
+  if (!rows.length) {
+    return {
+      ok: true,
+      entries: []
+    };
+  }
+
+  const inserted = await fetch(`${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries`, {
+    method: "POST",
+    headers: {
+      apikey: process.env.SUPABASE_ANON_KEY,
+      authorization: authHeader,
+      "content-type": "application/json",
+      prefer: "return=minimal"
+    },
+    body: JSON.stringify(rows)
+  });
+
+  if (!inserted.ok) {
+    return {
+      ok: false,
+      status: inserted.status,
+      error: "Could not save leaderboard"
+    };
+  }
+
+  return listAdminEntries(authHeader);
+}
+
 async function saveSupabaseLeaderboard(leaderboard, authHeader, options = { mode: "refresh" }) {
   const user = await readSupabaseUser(authHeader);
 
@@ -484,6 +760,7 @@ async function saveSupabaseLeaderboard(leaderboard, authHeader, options = { mode
   }
 
   const existingBaselines = options.mode === "refresh" ? await readSupabaseBaselines(authHeader) : new Map();
+  const existingFlags = await readSupabaseEntryFlags(authHeader);
   const weekStartedAt = new Date();
   const weekEndsAt = new Date(weekStartedAt.getTime() + 7 * 24 * 60 * 60 * 1000);
 
@@ -532,6 +809,7 @@ async function saveSupabaseLeaderboard(leaderboard, authHeader, options = { mode
         commission_generated: entry.commissionGenerated,
         first_seen: entry.firstSeen,
         last_seen: entry.lastSeen,
+        blocked: Boolean(existingFlags.get(entry.name)?.blocked),
         avatar: entry.avatar,
         updated_at: now
       };
@@ -564,6 +842,32 @@ async function saveSupabaseLeaderboard(leaderboard, authHeader, options = { mode
   return {
     ok: true
   };
+}
+
+async function readSupabaseEntryFlags(authHeader) {
+  const flags = new Map();
+
+  try {
+    const response = await fetch(`${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries?select=name,blocked`, {
+      headers: {
+        apikey: process.env.SUPABASE_ANON_KEY,
+        authorization: authHeader
+      }
+    });
+
+    if (!response.ok) return flags;
+
+    const rows = await response.json();
+    rows.forEach((row) => {
+      flags.set(row.name, {
+        blocked: Boolean(row.blocked)
+      });
+    });
+  } catch {
+    return flags;
+  }
+
+  return flags;
 }
 
 async function readSupabaseBaselines(authHeader) {
