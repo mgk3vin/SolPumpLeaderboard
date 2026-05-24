@@ -14,6 +14,7 @@ const elements = {
 
 let weekEndsAt = null;
 let timerInterval = null;
+let previousTimerParts = {};
 
 const solFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 0,
@@ -120,10 +121,20 @@ function renderTimer() {
   const minutes = Math.floor((seconds % 3600) / 60);
   const secs = seconds % 60;
 
-  elements.timerDays.textContent = String(days);
-  elements.timerHours.textContent = String(hours).padStart(2, "0");
-  elements.timerMinutes.textContent = String(minutes).padStart(2, "0");
-  elements.timerSeconds.textContent = String(secs).padStart(2, "0");
+  setTimerPart(elements.timerDays, "days", String(days));
+  setTimerPart(elements.timerHours, "hours", String(hours).padStart(2, "0"));
+  setTimerPart(elements.timerMinutes, "minutes", String(minutes).padStart(2, "0"));
+  setTimerPart(elements.timerSeconds, "seconds", String(secs).padStart(2, "0"));
+}
+
+function setTimerPart(element, key, value) {
+  if (previousTimerParts[key] === value) return;
+
+  previousTimerParts[key] = value;
+  element.textContent = value;
+  element.classList.remove("timer-drop");
+  void element.offsetWidth;
+  element.classList.add("timer-drop");
 }
 
 function renderAvatar(row) {
