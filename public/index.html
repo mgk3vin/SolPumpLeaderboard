@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -14,13 +14,13 @@
   </head>
   <body>
     <main class="shell">
-      <nav class="topbar" aria-label="Hauptnavigation">
+      <nav class="topbar" aria-label="Primary navigation">
         <div class="brand">
           <span class="brand-mark">LP</span>
           <span>LordpommesX2</span>
         </div>
         <a class="kick-link" href="https://kick.com/LordpommesX2" target="_blank" rel="noreferrer">
-          Kick öffnen
+          Open Kick
         </a>
       </nav>
 
@@ -28,21 +28,18 @@
         <div class="hero-copy">
           <p class="eyebrow">Affiliate Wager Race</p>
           <h1>LordpommesX2 Leaderboard</h1>
-          <p>
-            Live-Ranking für SolPump Affiliates, sortiert nach Wager. Die Daten laufen serverseitig
-            über deine SolPump Session.
-          </p>
+          <p>Live SolPump affiliate standings for LordpommesX2, ranked by total wager.</p>
         </div>
 
-        <div class="hero-panel" aria-label="Leaderboard Status">
+        <div class="hero-panel" aria-label="Leaderboard status">
           <span class="status-dot" id="statusDot"></span>
-          <span id="statusText">Daten werden geladen</span>
+          <span id="statusText">Loading data</span>
         </div>
       </section>
 
-      <section class="summary-grid" aria-label="Zusammenfassung">
+      <section class="summary-grid" aria-label="Summary">
         <article>
-          <span>Gesamter Wager</span>
+          <span>Total Wagered</span>
           <strong id="totalWager">-</strong>
         </article>
         <article>
@@ -50,11 +47,11 @@
           <strong id="totalAffiliates">-</strong>
         </article>
         <article>
-          <span>Gesamte Bets</span>
-          <strong id="totalBets">-</strong>
+          <span>Commission Generated</span>
+          <strong id="totalCommission">-</strong>
         </article>
         <article>
-          <span>Update</span>
+          <span>Last Update</span>
           <strong id="lastUpdate">-</strong>
         </article>
       </section>
@@ -65,24 +62,24 @@
             <p class="eyebrow">Main Leaderboard</p>
             <h2>Top Affiliates</h2>
           </div>
-          <button id="refreshButton" type="button">Aktualisieren</button>
+          <button id="refreshButton" type="button">Refresh</button>
         </div>
 
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Rang</th>
+                <th>Rank</th>
                 <th>Affiliate</th>
                 <th>Wager</th>
-                <th>Deposits</th>
-                <th>Bets</th>
-                <th>Profit</th>
+                <th>Commission Generated</th>
+                <th>First Seen</th>
+                <th>Last Seen</th>
               </tr>
             </thead>
             <tbody id="leaderboardBody">
               <tr>
-                <td colspan="6" class="empty-state">Leaderboard wird geladen...</td>
+                <td colspan="6" class="empty-state">Loading leaderboard...</td>
               </tr>
             </tbody>
           </table>

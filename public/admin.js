@@ -20,7 +20,7 @@ async function boot() {
   config = await fetch("/api/config").then((response) => response.json());
 
   if (!config.supabaseUrl || !config.supabaseAnonKey) {
-    setStatus("Supabase ist noch nicht konfiguriert.");
+    setStatus("Supabase is not configured yet.");
     return;
   }
 
@@ -54,7 +54,7 @@ async function signInWithPassword(event) {
     return;
   }
 
-  setStatus("Login erfolgreich.");
+  setStatus("Signed in.");
 }
 
 async function renderSession(session) {
@@ -68,13 +68,13 @@ async function renderSession(session) {
 
   if (!session) {
     localStorage.removeItem("lordpommes_admin_token");
-    setStatus("Bitte mit der freigeschalteten Admin-E-Mail einloggen.");
+    setStatus("Please sign in with an approved admin email.");
     return;
   }
 
   if (!isAdmin) {
     localStorage.removeItem("lordpommes_admin_token");
-    setStatus("Dieser Account ist nicht als Admin freigeschaltet.");
+    setStatus("This account is not enabled as an admin.");
     return;
   }
 
@@ -85,7 +85,7 @@ async function renderSession(session) {
     response.json()
   );
   elements.bookmarkletLink.href = bookmarklet.bookmarklet;
-  setStatus("Bereit fuer den SolPump Import.");
+  setStatus("Ready for SolPump import.");
 }
 
 async function readAdminStatus(token) {
@@ -115,7 +115,7 @@ async function readAdminStatus(token) {
 async function signOut() {
   await supabase.auth.signOut();
   localStorage.removeItem("lordpommes_admin_token");
-  setStatus("Abgemeldet.");
+  setStatus("Signed out.");
 }
 
 function setStatus(message) {

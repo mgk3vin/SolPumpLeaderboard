@@ -1,18 +1,18 @@
 # LordpommesX2 SolPump Leaderboard
 
-Leaderboard Website fuer den Kick Streamer LordpommesX2.
+Leaderboard website for the Kick streamer LordpommesX2.
 
-## Starten
+## Start
 
 ```bash
 npm run dev
 ```
 
-Danach ist die Seite unter `http://localhost:3000` erreichbar.
+The site is available at `http://localhost:3000`.
 
-## SolPump anbinden
+## Connect SolPump
 
-Lege eine `.env` Datei an:
+Create a `.env` file:
 
 ```env
 PORT=3000
@@ -20,44 +20,44 @@ PUBLIC_BASE_URL=http://localhost:3000
 SUPABASE_URL=https://dein-projekt.supabase.co
 SUPABASE_ANON_KEY=dein-anon-key
 ADMIN_EMAILS=deine-admin-mail@example.com
-SOLPUMP_API_URL=https://deine-solpump-api-url
-SOLPUMP_COOKIE=dein-cookie
+SOLPUMP_API_URL=https://your-solpump-api-url
+SOLPUMP_COOKIE=your-cookie
 ```
 
-Ohne diese Werte zeigt die Website Demo-Daten. Der Cookie wird nur im Node-Server genutzt und nicht an den Browser ausgeliefert.
+Without these values, the website shows demo data. The cookie is only used by the Node server and is never sent to the browser.
 
-Der Server normalisiert typische Affiliate-Felder wie `wagered`, `wager`, `totalWagered`, `deposits`, `bets` und `profit`. Sobald die echte SolPump Response-Struktur bekannt ist, kann die Funktion `normalizeSolPumpPayload` in `server.js` exakt auf das Format angepasst werden.
+The server normalizes common affiliate fields like `wagered`, `wager`, `totalWagered`, `commissionGenerated`, `firstSeen`, and `lastSeen`. Large raw token-unit values are converted to SOL.
 
 ## Supabase Admin-System
 
-1. Neues Supabase Projekt erstellen.
-2. In Supabase den SQL Editor oeffnen.
-3. Den Inhalt aus `supabase.sql` ausfuehren.
-4. Danach die Admin-Mail eintragen:
+1. Create a new Supabase project.
+2. Open the Supabase SQL editor.
+3. Run the contents of `supabase.sql`.
+4. Add the admin email:
 
 ```sql
 insert into public.admin_users (email)
-values ('deine-admin-mail@example.com')
+values ('your-admin-email@example.com')
 on conflict (email) do nothing;
 ```
 
-5. In `.env` `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `ADMIN_EMAILS` und beim Hosting `PUBLIC_BASE_URL` setzen.
-6. In Supabase unter `Authentication > Users` einen User fuer die Admin-Mail anlegen.
-7. Admin-Seite oeffnen: `http://localhost:3000/admin.html`
+5. Set `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `ADMIN_EMAILS`, and `PUBLIC_BASE_URL` in `.env` or your hosting provider.
+6. In Supabase, create a user for the admin email under `Authentication > Users`.
+7. Open the admin page: `http://localhost:3000/admin.html`
 
-Die oeffentliche Seite liest nur aus Supabase. Schreiben darf nur ein eingeloggter Admin, dessen E-Mail in Supabase Auth, in `admin_users` und in `ADMIN_EMAILS` eingetragen ist.
+The public page only reads from Supabase. Writes are only allowed for signed-in admins whose email exists in Supabase Auth, `admin_users`, and `ADMIN_EMAILS`.
 
-## Falls Cloudflare den Server blockt
+## If Cloudflare Blocks the Server
 
-SolPump schuetzt die API teilweise mit einer Browser-Challenge. Dann kann ein lokaler Node-Server die API trotz Cookie nicht direkt abrufen.
+SolPump can protect the API with a browser challenge. In that case, the Node server cannot fetch the API directly, even with cookies.
 
 Workaround:
 
-1. Starte die Leaderboard-Seite lokal.
-2. Oeffne `http://localhost:3000/admin.html`.
-3. Logge dich mit der Admin-Mail ein.
-4. Ziehe den Button `Leaderboard aktualisieren` in deine Lesezeichenleiste.
-5. Oeffne `https://solpump.io/affiliates`.
-6. Klicke das Lesezeichen.
+1. Start the leaderboard website.
+2. Open `http://localhost:3000/admin.html`.
+3. Sign in with the admin email and password.
+4. Drag the `Update Leaderboard` button into your bookmarks bar.
+5. Open `https://solpump.io/affiliates`.
+6. Click the bookmark.
 
-Der Import laeuft dann im eingeloggten SolPump-Browser und speichert die normalisierten Daten in Supabase.
+The import runs inside the signed-in SolPump browser and saves normalized data to Supabase.

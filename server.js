@@ -64,13 +64,13 @@ const server = http.createServer(async (request, response) => {
     console.error(error);
     sendJson(response, 500, {
       ok: false,
-      error: "Interner Serverfehler"
+      error: "Internal server error"
     });
   }
 });
 
 server.listen(port, () => {
-  console.log(`LordpommesX2 Leaderboard läuft auf http://localhost:${port}`);
+  console.log(`LordpommesX2 Leaderboard is running on http://localhost:${port}`);
 });
 
 async function sendLeaderboard(response) {
@@ -120,7 +120,7 @@ async function sendLeaderboard(response) {
   if (!upstreamResponse.ok) {
     sendJson(response, upstreamResponse.status, {
       ok: false,
-      error: `SolPump API antwortet mit Status ${upstreamResponse.status}`
+      error: `SolPump API responded with status ${upstreamResponse.status}`
     });
     return;
   }
@@ -148,7 +148,7 @@ async function receiveBrowserIngest(request, response) {
     if (!saved.ok) {
       sendJson(response, saved.status || 500, {
         ok: false,
-        error: saved.error || "Supabase Import fehlgeschlagen"
+        error: saved.error || "Supabase import failed"
       });
       return;
     }
@@ -179,7 +179,7 @@ function sendBookmarklet(response, requestUrl) {
   const ingestUrl = process.env.PUBLIC_BASE_URL ? `${process.env.PUBLIC_BASE_URL.replace(/\/$/, "")}/api/ingest` : `http://localhost:${port}/api/ingest`;
   const token = requestUrl.searchParams.get("token") || "";
   const tokenExpression = token ? JSON.stringify(token) : `localStorage.getItem("lordpommes_admin_token")`;
-  const script = `(async()=>{const t=${tokenExpression};if(!t){alert("Bitte erst im Admin-Bereich einloggen.");return;}const r=await fetch(${JSON.stringify(apiPath)},{credentials:"include"});const j=await r.json();const p=await fetch(${JSON.stringify(ingestUrl)},{method:"POST",headers:{"content-type":"application/json","authorization":"Bearer "+t},body:JSON.stringify(j)});const o=await p.json();if(!p.ok||!o.ok)throw new Error(o.error||"Import fehlgeschlagen");alert("LordpommesX2 Leaderboard aktualisiert: "+o.rows+" Affiliates");})().catch(e=>alert("Leaderboard Import fehlgeschlagen: "+e.message));`;
+  const script = `(async()=>{const t=${tokenExpression};if(!t){alert("Please sign in to the admin panel first.");return;}const r=await fetch(${JSON.stringify(apiPath)},{credentials:"include"});const j=await r.json();const p=await fetch(${JSON.stringify(ingestUrl)},{method:"POST",headers:{"content-type":"application/json","authorization":"Bearer "+t},body:JSON.stringify(j)});const o=await p.json();if(!p.ok||!o.ok)throw new Error(o.error||"Import failed");alert("LordpommesX2 leaderboard updated: "+o.rows+" affiliates");})().catch(e=>alert("Leaderboard import failed: "+e.message));`;
 
   sendJson(response, 200, {
     ok: true,
@@ -279,15 +279,13 @@ function parseAdminEmails() {
 
 async function readSupabaseLeaderboard() {
   try {
-    const response = await fetch(
-      `${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries?select=rank,name,wagered,deposits,bets,profit,avatar,updated_at&order=rank.asc`,
-      {
-        headers: {
-          apikey: process.env.SUPABASE_ANON_KEY,
-          authorization: `Bearer ${process.env.SUPABASE_ANON_KEY}`
-        }
-      }
+    let response = await fetchSupabaseLeaderboard(
+      "rank,name,wagered,deposits,bets,profit,commission_generated,first_seen,last_seen,avatar,updated_at"
     );
+
+    if (response.status === 400) {
+      response = await fetchSupabaseLeaderboard("rank,name,wagered,deposits,bets,profit,avatar,updated_at");
+    }
 
     if (!response.ok) {
       return {
@@ -300,10 +298,13 @@ async function readSupabaseLeaderboard() {
     const leaderboard = rows.map((row) => ({
       rank: numberFrom(row.rank),
       name: row.name,
-      wagered: numberFrom(row.wagered),
-      deposits: numberFrom(row.deposits),
+      wagered: solAmountFrom(row.wagered),
+      deposits: solAmountFrom(row.deposits),
       bets: numberFrom(row.bets),
-      profit: numberFrom(row.profit),
+      profit: solAmountFrom(row.profit),
+      commissionGenerated: solAmountFrom(row.commission_generated ?? row.commissionGenerated ?? row.profit),
+      firstSeen: row.first_seen ?? row.firstSeen ?? null,
+      lastSeen: row.last_seen ?? row.lastSeen ?? null,
       avatar: row.avatar
     }));
 
@@ -320,6 +321,15 @@ async function readSupabaseLeaderboard() {
   }
 }
 
+function fetchSupabaseLeaderboard(select) {
+  return fetch(`${process.env.SUPABASE_URL}/rest/v1/leaderboard_entries?select=${select}&order=rank.asc`, {
+    headers: {
+      apikey: process.env.SUPABASE_ANON_KEY,
+      authorization: `Bearer ${process.env.SUPABASE_ANON_KEY}`
+    }
+  });
+}
+
 async function saveSupabaseLeaderboard(leaderboard, authHeader) {
   const user = await readSupabaseUser(authHeader);
 
@@ -327,7 +337,7 @@ async function saveSupabaseLeaderboard(leaderboard, authHeader) {
     return {
       ok: false,
       status: 401,
-      error: "Admin Login ist abgelaufen oder ungueltig"
+      error: "Admin login expired or is invalid"
     };
   }
 
@@ -336,7 +346,7 @@ async function saveSupabaseLeaderboard(leaderboard, authHeader) {
     return {
       ok: false,
       status: 403,
-      error: "Diese E-Mail ist nicht als Admin freigeschaltet"
+      error: "This email is not enabled as an admin"
     };
   }
 
@@ -352,7 +362,7 @@ async function saveSupabaseLeaderboard(leaderboard, authHeader) {
     return {
       ok: false,
       status: cleared.status,
-      error: "Altes Leaderboard konnte nicht geloescht werden"
+      error: "Could not clear the old leaderboard"
     };
   }
 
@@ -364,6 +374,9 @@ async function saveSupabaseLeaderboard(leaderboard, authHeader) {
     deposits: entry.deposits,
     bets: entry.bets,
     profit: entry.profit,
+    commission_generated: entry.commissionGenerated,
+    first_seen: entry.firstSeen,
+    last_seen: entry.lastSeen,
     avatar: entry.avatar,
     updated_at: now
   }));
@@ -383,7 +396,7 @@ async function saveSupabaseLeaderboard(leaderboard, authHeader) {
     return {
       ok: false,
       status: inserted.status,
-      error: "Neues Leaderboard konnte nicht gespeichert werden"
+      error: "Could not save the new leaderboard"
     };
   }
 
@@ -435,16 +448,29 @@ function normalizeSolPumpPayload(payload) {
 
   return rows
     .map((item, index) => {
-      const wagered = numberFrom(item.wagered ?? item.wager ?? item.totalWagered ?? item.volume);
-      const profit = numberFrom(item.profit ?? item.netProfit ?? item.pnl);
+      const wagered = solAmountFrom(item.wagered ?? item.wager ?? item.totalWagered ?? item.volume);
+      const commissionGenerated = solAmountFrom(
+        item.commissionGenerated ??
+          item.commission_generated ??
+          item.comissionGenerated ??
+          item.generatedCommission ??
+          item.commission ??
+          item.revenue ??
+          item.profit ??
+          item.netProfit ??
+          item.pnl
+      );
 
       return {
         rank: numberFrom(item.rank) || index + 1,
         name: String(item.username ?? item.name ?? item.affiliate ?? item.player ?? `Affiliate ${index + 1}`),
         wagered,
-        deposits: numberFrom(item.deposits ?? item.totalDeposits ?? item.depositAmount),
+        deposits: solAmountFrom(item.deposits ?? item.totalDeposits ?? item.depositAmount),
         bets: numberFrom(item.bets ?? item.totalBets ?? item.betCount),
-        profit,
+        profit: commissionGenerated,
+        commissionGenerated,
+        firstSeen: item.firstSeen ?? item.first_seen ?? item.createdAt ?? item.created_at ?? null,
+        lastSeen: item.lastSeen ?? item.last_seen ?? item.updatedAt ?? item.updated_at ?? null,
         avatar: item.avatar ?? item.avatarUrl ?? item.image ?? null
       };
     })
@@ -458,13 +484,18 @@ function numberFrom(value) {
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
+function solAmountFrom(value) {
+  const numeric = numberFrom(value);
+  return Math.abs(numeric) >= 1_000_000 ? numeric / 1_000_000_000 : numeric;
+}
+
 async function sendStatic(pathname, response) {
   const safePath = pathname === "/" ? "/index.html" : pathname;
   const filePath = path.normalize(path.join(publicDir, safePath));
 
   if (!filePath.startsWith(publicDir) || !existsSync(filePath)) {
     response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
-    response.end("Nicht gefunden");
+    response.end("Not found");
     return;
   }
 

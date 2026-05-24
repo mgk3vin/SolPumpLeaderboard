@@ -5,9 +5,21 @@ create table if not exists public.leaderboard_entries (
   deposits numeric not null default 0,
   bets numeric not null default 0,
   profit numeric not null default 0,
+  commission_generated numeric not null default 0,
+  first_seen timestamptz,
+  last_seen timestamptz,
   avatar text,
   updated_at timestamptz not null default now()
 );
+
+alter table public.leaderboard_entries
+add column if not exists commission_generated numeric not null default 0;
+
+alter table public.leaderboard_entries
+add column if not exists first_seen timestamptz;
+
+alter table public.leaderboard_entries
+add column if not exists last_seen timestamptz;
 
 create table if not exists public.admin_users (
   email text primary key
@@ -56,7 +68,7 @@ using (
   )
 );
 
--- Danach deine Admin-Mail eintragen:
+-- Then add your admin email:
 -- insert into public.admin_users (email)
--- values ('deine-admin-mail@example.com')
+-- values ('your-admin-email@example.com')
 -- on conflict (email) do nothing;

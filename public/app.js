@@ -2,20 +2,23 @@ const elements = {
   body: document.querySelector("#leaderboardBody"),
   totalWager: document.querySelector("#totalWager"),
   totalAffiliates: document.querySelector("#totalAffiliates"),
-  totalBets: document.querySelector("#totalBets"),
+  totalCommission: document.querySelector("#totalCommission"),
   lastUpdate: document.querySelector("#lastUpdate"),
   statusDot: document.querySelector("#statusDot"),
   statusText: document.querySelector("#statusText"),
   refreshButton: document.querySelector("#refreshButton")
 };
 
-const currencyFormatter = new Intl.NumberFormat("de-DE", {
-  style: "currency",
-  currency: "EUR",
-  maximumFractionDigits: 0
+const solFormatter = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 4,
+  maximumFractionDigits: 4
 });
 
-const numberFormatter = new Intl.NumberFormat("de-DE", {
+const compactSolFormatter = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 4
+});
+
+const numberFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0
 });
 
@@ -23,7 +26,7 @@ elements.refreshButton.addEventListener("click", loadLeaderboard);
 loadLeaderboard();
 
 async function loadLeaderboard() {
-  setStatus("loading", "Daten werden geladen");
+  setStatus("loading", "Loading data");
   elements.refreshButton.disabled = true;
 
   try {
@@ -31,7 +34,7 @@ async function loadLeaderboard() {
     const payload = await response.json();
 
     if (!response.ok || !payload.ok) {
-      throw new Error(payload.error || "Leaderboard konnte nicht geladen werden");
+      throw new Error(payload.error || "Leaderboard could not be loaded");
     }
 
     renderLeaderboard(payload.leaderboard || []);
@@ -39,16 +42,16 @@ async function loadLeaderboard() {
     setStatus(
       payload.source === "demo" ? "demo" : "live",
       payload.source === "demo"
-        ? "Demo-Daten aktiv"
+        ? "Demo data active"
         : payload.source === "browser"
-          ? "Aus Browser-Import geladen"
+          ? "Loaded from browser import"
           : payload.source === "supabase"
-            ? "Live aus Supabase"
-          : "Live mit SolPump verbunden"
+            ? "Live from Supabase"
+            : "Live with SolPump"
     );
   } catch (error) {
     elements.body.innerHTML = `<tr><td colspan="6" class="empty-state">${escapeHtml(error.message)}</td></tr>`;
-    setStatus("error", "Verbindung fehlgeschlagen");
+    setStatus("error", "Connection failed");
   } finally {
     elements.refreshButton.disabled = false;
   }
@@ -56,7 +59,7 @@ async function loadLeaderboard() {
 
 function renderLeaderboard(rows) {
   if (!rows.length) {
-    elements.body.innerHTML = '<tr><td colspan="6" class="empty-state">Noch keine Affiliate-Daten vorhanden.</td></tr>';
+    elements.body.innerHTML = '<tr><td colspan="6" class="empty-state">No affiliate data yet.</td></tr>';
     return;
   }
 
@@ -71,10 +74,10 @@ function renderLeaderboard(rows) {
               <span>${escapeHtml(row.name)}</span>
             </div>
           </td>
-          <td>${currencyFormatter.format(row.wagered || 0)}</td>
-          <td>${currencyFormatter.format(row.deposits || 0)}</td>
-          <td>${numberFormatter.format(row.bets || 0)}</td>
-          <td class="${(row.profit || 0) < 0 ? "negative" : "positive"}">${currencyFormatter.format(row.profit || 0)}</td>
+          <td>${formatSol(row.wagered)}</td>
+          <td class="positive">${formatSol(row.commissionGenerated ?? row.profit)}</td>
+          <td>${formatDateTime(row.firstSeen)}</td>
+          <td>${formatDateTime(row.lastSeen)}</td>
         </tr>
       `
     )
@@ -84,15 +87,12 @@ function renderLeaderboard(rows) {
 function renderSummary(payload) {
   const rows = payload.leaderboard || [];
   const totalWager = rows.reduce((sum, row) => sum + (row.wagered || 0), 0);
-  const totalBets = rows.reduce((sum, row) => sum + (row.bets || 0), 0);
+  const totalCommission = rows.reduce((sum, row) => sum + (row.commissionGenerated ?? row.profit ?? 0), 0);
 
-  elements.totalWager.textContent = currencyFormatter.format(totalWager);
+  elements.totalWager.textContent = formatSol(totalWager, compactSolFormatter);
   elements.totalAffiliates.textContent = numberFormatter.format(rows.length);
-  elements.totalBets.textContent = numberFormatter.format(totalBets);
-  elements.lastUpdate.textContent = new Intl.DateTimeFormat("de-DE", {
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(new Date(payload.updatedAt));
+  elements.totalCommission.textContent = formatSol(totalCommission, compactSolFormatter);
+  elements.lastUpdate.textContent = formatDateTime(payload.updatedAt);
 }
 
 function renderAvatar(row) {
@@ -108,6 +108,24 @@ function renderAvatar(row) {
       .slice(0, 2)
       .toUpperCase()
   );
+}
+
+function formatSol(value, formatter = solFormatter) {
+  return `${formatter.format(Number(value || 0))} SOL`;
+}
+
+function formatDateTime(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return escapeHtml(value);
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
 }
 
 function setStatus(type, text) {
